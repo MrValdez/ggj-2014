@@ -82,43 +82,42 @@ LoadSpritesLoop:
     BNE LoadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
                         ; if compare was equal to 32, keep going down
 
-LoadBackground:
-
-  LDA $2002             ; read PPU status to reset the high/low latch
-  LDA #$20
-  STA $2006             ; write the high byte of $2000 address
-  LDA #$00
-  STA $2006             ; write the low byte of $2000 address
-  LDX #$00              ; start out at 0
-
-LoadBackgroundLoop:
-  LDA background, x     ; load data from address (background + the value in x)
-  STA $2007             ; write to PPU
-  INX                   ; X = X + 1
-  CPX #$80              ; Compare X to hex $80, decimal 128 - copying 128 bytes
-  BNE LoadBackgroundLoop  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
-                        ; if compare was equal to 128, keep going down             
-
-LoadAttribute:
-    LDA $2002             ; read PPU status to reset the high/low latch
-    LDA #$23
-    STA $2006             ; write the high byte of $23C0 address
-    LDA #$C0
-    STA $2006             ; write the low byte of $23C0 address
-    LDX #$00              ; start out at 0
-
-LoadAttributeLoop:
-    LDA attribute, x      ; load data from address (attribute + the value in x)
-    STA $2007             ; write to PPU
-    INX                   ; X = X + 1
-    CPX #$08              ; Compare X to hex $08, decimal 8 - copying 8 bytes
-    BNE LoadAttributeLoop
-
 ;;;;;;;;;;;;
-    LDA #%10010000 ;enable NMI, sprites from Pattern 0, background from Pattern 1
+;http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=4440
+
+;  PPUCTRL ($2000)
+;  76543210
+;  | ||||||
+;  | ||||++- Base nametable address
+;  | ||||    (0 = $2000; 1 = $2400; 2 = $2800; 3 = $2C00)
+;  | |||+--- VRAM address increment per CPU read/write of PPUDATA
+;  | |||     (0: increment by 1, going across; 1: increment by 32, going down)
+;  | ||+---- Sprite pattern table address for 8x8 sprites (0: $0000; 1: $1000)
+;  | |+----- Background pattern table address (0: $0000; 1: $1000)
+;  | +------ Sprite size (0: 8x8; 1: 8x16)
+;  |
+;  +-------- Generate an NMI at the start of the
+;            vertical blanking interval vblank (0: off; 1: on)
+;    LDA #%10010000 ;enable NMI, sprites from Pattern 0, background from Pattern 1
+    LDA #%10000000 ;enable NMI, sprites from Pattern 0
     STA $2000
 
-    LDA #%00011110 ; enable sprites, enable background
+;PPUMASK ($2001)
+
+        ;76543210
+        ;||||||||
+        ;|||||||+- Grayscale (0: normal color; 1: AND all palette entries
+        ;|||||||   with 0x30, effectively producing a monochrome display;
+        ;|||||||   note that colour emphasis STILL works when this is on!)
+        ;||||||+-- Disable background clipping in leftmost 8 pixels of screen
+        ;|||||+--- Disable sprite clipping in leftmost 8 pixels of screen
+        ;||||+---- Enable background rendering
+        ;|||+----- Enable sprite rendering
+        ;||+------ Intensify reds (and darken other colors)
+        ;|+------- Intensify greens (and darken other colors)
+        ;+-------- Intensify blues (and darken other colors)
+;    LDA #%00011110 ; enable sprites, enable background
+    LDA #%00010000 ; enable sprites
     STA $2001
 ;;;;;;;;;;;;    
     
@@ -214,6 +213,7 @@ Controller1_RightDone:
     RTI
 
 PPUCleanUp:
+    ;;This is the PPU clean up section, so rendering the next frame starts properly.
     LDA #%10010000   ; enable NMI, sprites from Pattern Table 0, background from Pattern Table 1
     STA $2000
     LDA #%00011110   ; enable sprites, enable background, no clipping on left side
@@ -239,20 +239,6 @@ sprites:
     .db $80, $33, $00, $88   ;sprite 1
     .db $88, $34, $00, $80   ;sprite 2
     .db $88, $35, $00, $88   ;sprite 3
-
-background:
-    .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 1
-    .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky ($24 = sky)
-    .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 2
-    .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
-    .db $24,$24,$24,$24,$45,$45,$24,$24,$45,$45,$45,$45,$45,$45,$24,$24  ;;row 3
-    .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$53,$54,$24,$24  ;;some brick tops
-    .db $24,$24,$24,$24,$47,$47,$24,$24,$47,$47,$47,$47,$47,$47,$24,$24  ;;row 4
-    .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$55,$56,$24,$24  ;;brick bottoms
-
-attribute:
-    .db %00000000, %00010000, %0010000, %00010000, %00000000, %00000000, %00000000, %00110000
-    .db $24,$24,$24,$24, $47,$47,$24,$24 ,$47,$47,$47,$47, $47,$47,$24,$24 ,$24,$24,$24,$24 ,$24,$24,$24,$24, $24,$24,$24,$24, $55,$56,$24,$24  ;;brick bottoms
 
 
 
