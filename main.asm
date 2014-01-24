@@ -15,6 +15,7 @@
 
     .bank 0
     .org $8000  ;;$c000
+    ;.org $c000
 
 RESET:
     SEI
@@ -34,6 +35,17 @@ vblankwait1:
 
 clearmem:
     LDA #$00
+    STA $0000, x
+    STA $0100, x
+    STA $0300, x
+    STA $0400, x
+    STA $0500, x
+    STA $0600, x
+    STA $0700, x
+    LDA #$FE
+    STA $0200, x
+    INX
+    BNE clearmem
 
 vblankwait2:
     BIT $2002
@@ -65,13 +77,6 @@ LoadSpritesLoop:
     BNE LoadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
                         ; if compare was equal to 32, keep going down
 
-    LDA #%10000000   ; enable NMI, sprites from Pattern Table 0
-    STA $2000
-
-    LDA #%00010000   ; enable sprites
-    STA $2001
-
-
 LoadBackground:
 
   LDA $2002             ; read PPU status to reset the high/low latch
@@ -92,20 +97,26 @@ LoadBackgroundLoop:
               
 
 LoadAttribute:
-  LDA $2002             ; read PPU status to reset the high/low latch
-  LDA #$23
-  STA $2006             ; write the high byte of $23C0 address
-  LDA #$C0
-  STA $2006             ; write the low byte of $23C0 address
-  LDX #$00              ; start out at 0
+    LDA $2002             ; read PPU status to reset the high/low latch
+    LDA #$23
+    STA $2006             ; write the high byte of $23C0 address
+    LDA #$C0
+    STA $2006             ; write the low byte of $23C0 address
+    LDX #$00              ; start out at 0
 
 LoadAttributeLoop:
-  LDA attribute, x      ; load data from address (attribute + the value in x)
-  STA $2007             ; write to PPU
-  INX                   ; X = X + 1
-  CPX #$08              ; Compare X to hex $08, decimal 8 - copying 8 bytes
-  BNE LoadAttributeLoop
+    LDA attribute, x      ; load data from address (attribute + the value in x)
+    STA $2007             ; write to PPU
+    INX                   ; X = X + 1
+    CPX #$08              ; Compare X to hex $08, decimal 8 - copying 8 bytes
+    BNE LoadAttributeLoop
 
+;;;;;;;;;;;;
+    LDA #%10010000 ;enable NMI, sprites from Pattern 0, background from Pattern 1
+    STA $2000
+
+    LDA #%00011110 ; enable sprites, enable background
+    STA $2001
 ;;;;;;;;;;;;    
     
 InfiniteLoop:
