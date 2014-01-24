@@ -11,12 +11,21 @@
     .inesmap 0   ; mapper 0 = NROM, no bank swapping
     .inesmir 1   ; background mirroring
 
+    .rsset $0000
+
+buttons1    .rs 1
+
 ;;;;
 
     .bank 0
     .org $8000  ;;$c000
     ;.org $c000
 
+vblankwait:
+    BIT $2002
+    BPL vblankwait
+    RTS
+    
 RESET:
     SEI
     CLD
@@ -29,10 +38,8 @@ RESET:
     STX $2001    ; disable rendering
     STX $4010    ; disable DMC IRQs    
 
-vblankwait1:
-    BIT $2002
-    BPL vblankwait1
-
+    JSR vblankwait ; first vblank
+    
 clearmem:
     LDA #$00
     STA $0000, x
@@ -47,9 +54,7 @@ clearmem:
     INX
     BNE clearmem
 
-vblankwait2:
-    BIT $2002
-    BPL vblankwait2
+    JSR vblankwait ; second vblank
     
 ;;;;;;;;;;;    
 LoadPalettes:
@@ -127,48 +132,88 @@ NMI:
     STA $2003  ; set the low byte (00) of the RAM address
     LDA #$02
     STA $4014  ; set the high byte (02) of the RAM address, start the transfer
+    JMP asder
+    
+asder_IN:
+Controller1_A: 
+    RTS
+Controller1_B:
+    RTS
+Controller1_Up:
+    RTS
+Controller1_Select:
+    RTS
+Controller1_Start:
+    RTS
+Controller1_Down:
+    RTS
+Controller1_Left:
+    RTS
+Controller1_Right:
+    LDA $0203       ; load sprite X position
+    CLC             ; make sure the carry flag is clear
+    ADC #$01        ; A = A + 1
+    STA $0203       ; save sprite X position
+    RTS
+    
+asder:
 
-LatchController:
+ReadController1:
     LDA #$01
     STA $4016
     LDA #$00
-    STA $4016       ; tell both the controllers to latch buttons
+    STA $4016
+    LDX #$08
+ReadController1Loop:
+    LDA $4016
+    LSR A            ; bit0 -> Carry
+    ROL buttons1     ; bit0 <- Carry
+    DEX
+    BNE ReadController1Loop
+    ;RTS
 
-ReadA: 
-    LDA $4016       ; player 1 - A
-    AND #%00000001  ; only look at bit 0
-    BEQ ReadADone   ; branch to ReadADone if button is NOT pressed (0)
-                  ; add instructions here to do something when button IS pressed (1)
-    LDA $0203       ; load sprite X position
-    CLC             ; make sure the carry flag is clear
-    ADC #$01        ; A = A + 1
-    STA $0203       ; save sprite X position
-ReadADone:        ; handling this button is done  
-
-ReadB: 
-    LDA $4016       ; player 1 - B
-    AND #%00000001  ; only look at bit 0
-    BEQ ReadBDone   ; branch to ReadBDone if button is NOT pressed (0)
-                  ; add instructions here to do something when button IS pressed (1)
-    LDA $0203       ; load sprite X position
-    SEC             ; make sure carry flag is set
-    SBC #$01        ; A = A - 1
-    STA $0203       ; save sprite X position
-ReadBDone:        ; handling this button is done
-
-    LDA $4016     ; player 1 - Select
-    LDA $4016     ; player 1 - Start
-
-ReadUp: 
-    LDA $4016       ; player 1 - Up
-    AND #%00000001  
-    BEQ ReadUpDone   
-                  ; add instructions here to do something when button IS pressed (1)
-    LDA $0203       ; load sprite X position
-    CLC             ; make sure the carry flag is clear
-    ADC #$01        ; A = A + 1
-    STA $0203       ; save sprite X position
-ReadUpDone:        ; handling this button is done  
+    LDA buttons1
+    ; A B S St U D L R
+    AND #%10000000
+    BEQ Controller1_ADone
+    JSR Controller1_A
+Controller1_ADone:    
+    LDA buttons1
+    AND #%01000000
+    BEQ Controller1_BDone
+    JSR Controller1_B
+Controller1_BDone:    
+    LDA buttons1
+    AND #%00100000
+    BEQ Controller1_SelectDone
+    JSR Controller1_Select
+Controller1_SelectDone:    
+    LDA buttons1
+    AND #%00010000
+    BEQ Controller1_StartDone
+    JSR Controller1_Start
+Controller1_StartDone:    
+    LDA buttons1
+    AND #%00001000
+    BEQ Controller1_UpDone
+    JSR Controller1_Up
+Controller1_UpDone:    
+    LDA buttons1
+    AND #%00000100
+    BEQ Controller1_DownDone
+    JSR Controller1_Down
+Controller1_DownDone:    
+    LDA buttons1
+    AND #%00000010
+    BEQ Controller1_LeftDone
+    JSR Controller1_Left
+Controller1_LeftDone:    
+    LDA buttons1
+    AND #%00000001
+    BEQ Controller1_RightDone
+    JSR Controller1_Right
+Controller1_RightDone:    
+    
 
 PPUCleanUp:
     LDA #%10010000   ; enable NMI, sprites from Pattern Table 0, background from Pattern Table 1
