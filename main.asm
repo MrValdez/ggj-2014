@@ -39,7 +39,7 @@ RESET:
     STX $4010    ; disable DMC IRQs    
 
     JSR vblankwait ; first vblank
-    
+
 clearmem:
     LDA #$00
     STA $0000, x
@@ -97,9 +97,7 @@ LoadBackgroundLoop:
   INX                   ; X = X + 1
   CPX #$80              ; Compare X to hex $80, decimal 128 - copying 128 bytes
   BNE LoadBackgroundLoop  ; Branch to LoadBackgroundLoop if compare was Not Equal to zero
-                        ; if compare was equal to 128, keep going down
-
-              
+                        ; if compare was equal to 128, keep going down             
 
 LoadAttribute:
     LDA $2002             ; read PPU status to reset the high/low latch
@@ -126,15 +124,8 @@ LoadAttributeLoop:
     
 InfiniteLoop:
     JMP InfiniteLoop
-    
-NMI:
-    LDA #$00
-    STA $2003  ; set the low byte (00) of the RAM address
-    LDA #$02
-    STA $4014  ; set the high byte (02) of the RAM address, start the transfer
-    JMP asder
-    
-asder_IN:
+
+UpdateInputs:
 Controller1_A: 
     RTS
 Controller1_B:
@@ -156,7 +147,14 @@ Controller1_Right:
     STA $0203       ; save sprite X position
     RTS
     
-asder:
+NMI:
+    LDA #$00
+    STA $2003  ; set the low byte (00) of the RAM address
+    LDA #$02
+    STA $4014  ; set the high byte (02) of the RAM address, start the transfer
+    JSR ReadInput
+        
+ReadInput:
 
 ReadController1:
     LDA #$01
@@ -213,7 +211,7 @@ Controller1_LeftDone:
     BEQ Controller1_RightDone
     JSR Controller1_Right
 Controller1_RightDone:    
-    
+    RTI
 
 PPUCleanUp:
     LDA #%10010000   ; enable NMI, sprites from Pattern Table 0, background from Pattern Table 1
