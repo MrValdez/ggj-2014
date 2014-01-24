@@ -83,27 +83,26 @@ LoadSpritesLoop:
                         ; if compare was equal to 32, keep going down
 
 ;;;;;;;;;;;;
-;http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=4440
-
-;  PPUCTRL ($2000)
-;  76543210
-;  | ||||||
-;  | ||||++- Base nametable address
-;  | ||||    (0 = $2000; 1 = $2400; 2 = $2800; 3 = $2C00)
-;  | |||+--- VRAM address increment per CPU read/write of PPUDATA
-;  | |||     (0: increment by 1, going across; 1: increment by 32, going down)
-;  | ||+---- Sprite pattern table address for 8x8 sprites (0: $0000; 1: $1000)
-;  | |+----- Background pattern table address (0: $0000; 1: $1000)
-;  | +------ Sprite size (0: 8x8; 1: 8x16)
-;  |
-;  +-------- Generate an NMI at the start of the
-;            vertical blanking interval vblank (0: off; 1: on)
+;http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=6082
+        ;  PPUCTRL ($2000)
+        ;  76543210
+        ;  | ||||||
+        ;  | ||||++- Base nametable address
+        ;  | ||||    (0 = $2000; 1 = $2400; 2 = $2800; 3 = $2C00)
+        ;  | |||+--- VRAM address increment per CPU read/write of PPUDATA
+        ;  | |||     (0: increment by 1, going across; 1: increment by 32, going down)
+        ;  | ||+---- Sprite pattern table address for 8x8 sprites (0: $0000; 1: $1000)
+        ;  | |+----- Background pattern table address (0: $0000; 1: $1000)
+        ;  | +------ Sprite size (0: 8x8; 1: 8x16)
+        ;  |
+        ;  +-------- Generate an NMI at the start of the
+        ;            vertical blanking interval vblank (0: off; 1: on)
 ;    LDA #%10010000 ;enable NMI, sprites from Pattern 0, background from Pattern 1
     LDA #%10000000 ;enable NMI, sprites from Pattern 0
     STA $2000
 
-;PPUMASK ($2001)
-
+;http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=4440
+        ;PPUMASK ($2001)
         ;76543210
         ;||||||||
         ;|||||||+- Grayscale (0: normal color; 1: AND all palette entries
