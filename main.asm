@@ -15,8 +15,13 @@
 
 ; http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=33378
 SPRITE_RAM = $0200
+TOTAL_SPRITES = 20
+
+LEFTWALL    = $20
+RIGHTWALL   = $DE
 
 id_avatar  = 0
+id_enemy   = 1
 
 ;;;;
 
@@ -121,11 +126,11 @@ LoadSprites:
     LDX #$00              ; start at 0
 LoadSpritesLoop:
     LDA sprites, x        ; load data from address (sprites +  x)
-    STA SPRITE_RAM, x          ; store into RAM address ($0200 + x)
+    STA SPRITE_RAM, x     ; store into RAM address ($0200 + x)
     INX                   ; X = X + 1
-    CPX #$20              ; Compare X to hex $20, decimal 32
+    CPX TOTAL_SPRITES     ; Compare X to hex $20, decimal 32
     BNE LoadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
-                        ; if compare was equal to 32, keep going down
+                          ; if compare was equal to X, keep going down
 
     RTS
 ;;;;;;;;;;;;    
@@ -138,7 +143,6 @@ Gravity:
 
     ; if < 10, exit
     LDA SPRITE_RAM
-;    ADC #$16        ;+16 from top
     CMP #$A0
     BCS exitGravity
 
@@ -186,14 +190,15 @@ Controller1_Start:
     RTS
 Controller1_Down:
     RTS
-Controller1_Left:
-    LDX id_avatar
-    LDA sprites_updateconstants, x
-    TAX
-    
+Controller1_Left:   
     ; top half
     SEC
     LDA SPRITE_RAM + 3
+    ; can't go past wall
+    CMP #LEFTWALL
+    BCC out
+    
+    SEC
     SBC #$01        
     STA SPRITE_RAM + 3
     LDA SPRITE_RAM + 4 + 3
@@ -207,14 +212,15 @@ Controller1_Left:
     LDA SPRITE_RAM + 8 + 4 + 3
     SBC #$01        
     STA SPRITE_RAM + 8 + 4 + 3
+out:
     RTS
-Controller1_Right:
-    LDX id_avatar
-    LDA sprites_updateconstants, x
-    TAX
-    
+Controller1_Right:   
     ; top half
     LDA SPRITE_RAM + 3
+    ; can't go past wall
+    CMP #RIGHTWALL
+    BCS out2
+
     CLC
     ADC #$01        
     STA SPRITE_RAM + 3
@@ -229,6 +235,7 @@ Controller1_Right:
     LDA SPRITE_RAM + 8 + 4 + 3
     ADC #$01        
     STA SPRITE_RAM + 8 + 4 + 3
+out2:
     RTS
 
 ReadInput:
@@ -281,10 +288,59 @@ Controller1_LeftDone:
     JSR Controller1_Right
 Controller1_RightDone:    
     RTS
+    
+EnemyUpdate:
+    LDX #13
+;    JMP DoEnemyUpdate
+;    JMP DoEnemyUpdate
+;    JMP DoEnemyUpdate
+;    JMP DoEnemyUpdate
+    RTS
+    
+DoEnemyUpdate:
+    ; top half (HORZ)
+;    SEC
+;    LDA SPRITE_RAM + 3
+    ; can't go past wall
+    ;CMP LEFTWALL
+    ;CMP #$20
+    ;BCS out
+    
+    SEC
+    SBC #$01        
+    STA SPRITE_RAM + 3,x
+    LDA SPRITE_RAM + 4 + 3,x
+    SBC #$01        
+    STA SPRITE_RAM + 4 + 3,x
+
+;    SEC
+;    LDA SPRITE_RAM + 3,x
+    
+;    ADC #$01        
+;    STA SPRITE_RAM + 3,x
+;;    LDA SPRITE_RAM + 4 + 3,x
+;;    ADC #$01        
+;;    STA SPRITE_RAM + 4 + 3,x
+
+;    CLC
+;    TXA
+;    ADC #$30
+;    TAX
+
+    ; bottom half (HORZ)
+;    LDA SPRITE_RAM + 8 + 3
+;    ADC #$01        
+;    STA SPRITE_RAM + 8 + 3
+;    LDA SPRITE_RAM + 8 + 4 + 3
+;    ADC #$01        
+;    STA SPRITE_RAM + 8 + 4 + 3
+;   
+;    RTS
 
 MainLoop:
-    JSR ReadInput        
+    JSR ReadInput
     JSR Gravity
+    JSR EnemyUpdate
     RTS
     
 NMI:
@@ -335,12 +391,25 @@ sprites:
 ;    .db $88, $3C, $00, $80
 ;    .db $88, $3D, $00, $88
 
+    ; feet
     .db $80, $40, $00, $80
     .db $80, $41, $00, $88
     .db $88, $50, $00, $80
     .db $88, $51, $00, $88
 
-sprites_updateconstants:                  ;constants for the use of the sprite_RAM constant           
+    ; monster1
+    .db $40, $2C, $00, $80
+    .db $40, $2D, $00, $88
+    .db $48, $3C, $00, $80
+    .db $48, $3D, $00, $88
+
+    ; monster2
+    .db $10, $2C, $00, $70
+    .db $10, $2D, $00, $78
+    .db $18, $3C, $00, $70
+    .db $18, $3D, $00, $78
+
+sprites_updateconstants:                  ;constants for the use of the SPRITE_RAM constant           
   .db $00,$10,$20,$30             ;4 sprites for each meta sprite, so add $10 for each meta sprite we process
 
 
