@@ -133,8 +133,27 @@ LoadSpritesLoop:
 InfiniteLoop:
     JMP InfiniteLoop
 
+Gravity:    
+    ; top half
+    LDA SPRITE_RAM 
+    CLC            
+    ADC #$01       
+    STA SPRITE_RAM 
+    STA SPRITE_RAM + 4
+
+    ; bottom half
+    LDA SPRITE_RAM + 8
+    CLC             
+    ADC #$01        
+    STA SPRITE_RAM + 8
+    STA SPRITE_RAM + 12
+
 UpdateInputs:
 Controller1_A: 
+    LDX id_avatar
+    LDA sprites_updateconstants, x
+    TAX
+
     LDX id_avatar
     LDA sprites_updateconstants, x
     TAX
@@ -142,14 +161,14 @@ Controller1_A:
     ; top half
     LDA SPRITE_RAM       ; load sprite Y position
     CLC             ; make sure the carry flag is clear
-    ADC #$01        ; A = A + 1
+    SBC #$01        ; A = A + 1
     STA SPRITE_RAM       ; save sprite Y position
     STA SPRITE_RAM + 4      ; save sprite Y position
 
     ; bottom half
     LDA SPRITE_RAM + 8      ; load sprite Y position
     CLC             ; make sure the carry flag is clear
-    ADC #$01        ; A = A + 1
+    SBC #$01        ; A = A + 1
     STA SPRITE_RAM + 8      ; save sprite Y position
     STA SPRITE_RAM + 12     ; save sprite Y position
     RTS
@@ -169,18 +188,21 @@ Controller1_Left:
     TAX
     
     ; top half
-    LDA SPRITE_RAM       ; load sprite Y position
-    CLC             ; make sure the carry flag is clear
-    ADC #$01        ; A = A + 1
-    STA SPRITE_RAM       ; save sprite Y position
-    STA SPRITE_RAM + 4      ; save sprite Y position
+    SEC
+    LDA SPRITE_RAM + 3
+    SBC #$01        
+    STA SPRITE_RAM + 3
+    LDA SPRITE_RAM + 4 + 3
+    SBC #$01        
+    STA SPRITE_RAM + 4 + 3
 
     ; bottom half
-    LDA SPRITE_RAM + 8      ; load sprite Y position
-    CLC             ; make sure the carry flag is clear
-    ADC #$01        ; A = A + 1
-    STA SPRITE_RAM + 8      ; save sprite Y position
-    STA SPRITE_RAM + 12     ; save sprite Y position
+    LDA SPRITE_RAM + 8 + 3
+    SBC #$01        
+    STA SPRITE_RAM + 8 + 3
+    LDA SPRITE_RAM + 8 + 4 + 3
+    SBC #$01        
+    STA SPRITE_RAM + 8 + 4 + 3
     RTS
 Controller1_Right:
     LDX id_avatar
@@ -188,18 +210,21 @@ Controller1_Right:
     TAX
     
     ; top half
-    LDA SPRITE_RAM       ; load sprite Y position
-    CLC             ; make sure the carry flag is clear
-    SBC #$01        ; A = A + 1
-    STA SPRITE_RAM       ; save sprite Y position
-    STA SPRITE_RAM + 4      ; save sprite Y position
+    LDA SPRITE_RAM + 3
+    CLC
+    ADC #$01        
+    STA SPRITE_RAM + 3
+    LDA SPRITE_RAM + 4 + 3
+    ADC #$01        
+    STA SPRITE_RAM + 4 + 3
 
     ; bottom half
-    LDA SPRITE_RAM + 8      ; load sprite Y position
-    CLC             ; make sure the carry flag is clear
-    SBC #$01        ; A = A + 1
-    STA SPRITE_RAM + 8      ; save sprite Y position
-    STA SPRITE_RAM + 12     ; save sprite Y position
+    LDA SPRITE_RAM + 8 + 3
+    ADC #$01        
+    STA SPRITE_RAM + 8 + 3
+    LDA SPRITE_RAM + 8 + 4 + 3
+    ADC #$01        
+    STA SPRITE_RAM + 8 + 4 + 3
     RTS
 
 ReadInput:
@@ -300,10 +325,15 @@ sprites:
     ;vert tile attr horiz
     
     ; Square Sprite
-    .db $80, $2C, $00, $80
-    .db $80, $2D, $00, $88
-    .db $88, $3C, $00, $80
-    .db $88, $3D, $00, $88
+;    .db $80, $2C, $00, $80
+;    .db $80, $2D, $00, $88
+;    .db $88, $3C, $00, $80
+;    .db $88, $3D, $00, $88
+
+    .db $80, $40, $00, $80
+    .db $80, $41, $00, $88
+    .db $88, $50, $00, $80
+    .db $88, $51, $00, $88
 
 sprites_updateconstants:                  ;constants for the use of the sprite_RAM constant           
   .db $00,$10,$20,$30             ;4 sprites for each meta sprite, so add $10 for each meta sprite we process
