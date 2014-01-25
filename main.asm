@@ -40,6 +40,8 @@ ANIMATION_TICK = $03
 LEFTWALL    = $20
 RIGHTWALL   = $DE
 
+STAGE1_TARGET   = $80
+
 id_avatar  = 0
 id_enemy   = 1
 
@@ -95,7 +97,7 @@ init:
     LDA #$00
     STA player_animation 
     
-    LDA #$03
+    LDA #$00
     STA avatar_mode
 
     RTI
@@ -217,10 +219,19 @@ AnimatePlayer_Frame1:
     LDX avatar_mode
     CPX #$00
     BEQ AnimatePlayer_Frame1_forme1_branch
+    BNE .nextF1
+    RTS
+.nextF1
     CPX #$01
     BEQ AnimatePlayer_Frame1_forme2_branch
+    BNE .nextF2
+    RTS
+.nextF2
     CPX #$02
     BEQ AnimatePlayer_Frame1_forme3_branch
+    BNE .nextF3
+    RTS
+.nextF3
     CPX #$03
     BEQ AnimatePlayer_Frame1_forme4_branch
     RTS
@@ -287,7 +298,6 @@ Controller1_Select:
 Controller1_Start:
     RTS
 Controller1_Down:
-    JSR AnimatePlayer
     RTS
 Controller1_Left:   
     ; top half
@@ -391,9 +401,38 @@ Controller1_LeftDone:
     JSR Controller1_Right
 Controller1_RightDone:    
     RTS
+
+CheckCollision:
+    JSR Stage1_CheckCollision
+    RTS
+
+Stage1_CheckCollision:
+    ; only for stage 1
+    LDX avatar_mode
+    CPX #$00
+    BEQ Stage1_CheckCollision_Go
+    RTS
+    
+Stage1_CheckCollision_Go:
+    ; check player against block
+    LDA SPRITE_RAM + 3
+    CLC
+    ADC #$8        ;avatar is 16 pixels wide
+    CMP #STAGE1_TARGET
+    BCS OnCollision
+    RTS
+    
+OnCollision:
+    LDA avatar_mode
+    CLC
+    ADC #$01
+    STA avatar_mode
+    RTS
     
 EnemyUpdate:
-    LDX #$0D
+    JSR CheckCollision
+
+;    LDX #$0D
 ;    JSR DoEnemyUpdate
 ;    JMP DoEnemyUpdate
 ;    JMP DoEnemyUpdate
@@ -468,36 +507,29 @@ sprites:
 ;  +-------- Flip sprite vertically
 
     ;vert tile attr horiz
-    
-    ; Square Sprite
-;    .db $80, $2C, $00, $80
-;    .db $80, $2D, $00, $88
-;    .db $88, $3C, $00, $80
-;    .db $88, $3D, $00, $88
-
+ 
     ; player
-    .db $80, $42, $00, $20
-    .db $80, $43, $00, $28
-    .db $88, $52, $00, $20
-    .db $88, $53, $00, $28
+    .db $80, $2C, $00, $20
+    .db $80, $2D, $00, $28
+    .db $88, $3C, $00, $20
+    .db $88, $3D, $00, $28
 
-   ; monster1 (test)
-;    .db $A0, $2C, $00, $30
-;    .db $A0, $2D, $00, $38
-;    .db $A8, $3C, $00, $30
-;    .db $A8, $3D, $00, $38
+;    .db $80, $42, $00, $20
+;    .db $80, $43, $00, $28
+;    .db $88, $52, $00, $20
+;    .db $88, $53, $00, $28
 
-    ; monster1 (main)
-;    .db $40, $2C, $00, $80
-;    .db $40, $2D, $00, $88
-;    .db $48, $3C, $00, $80
-;    .db $48, $3D, $00, $88
+   ; monster1 
+    .db $A0, $2C, $00, STAGE1_TARGET
+    .db $A0, $2D, $00, STAGE1_TARGET + $8
+    .db $A8, $3C, $00, STAGE1_TARGET
+    .db $A8, $3D, $00, STAGE1_TARGET + $8
 
     ; monster2
-    .db $A0, $2C, $00, $E0
-    .db $A0, $2D, $00, $E8
-    .db $A8, $3C, $00, $E0
-    .db $A8, $3D, $00, $E8
+;    .db $A0, $2C, $00, $E0
+;    .db $A0, $2D, $00, $E8
+;    .db $A8, $3C, $00, $E0
+;    .db $A8, $3D, $00, $E8
 
 sprite_formes:
     .db $2C, $2D, $3C, $3D
