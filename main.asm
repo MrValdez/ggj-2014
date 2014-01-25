@@ -227,17 +227,26 @@ PPUCleanUp:
     .bank 1
     .org $E000
 palette:
-;    .db $0F,$31,$32,$33,$0F,$35,$36,$37,$0F,$39,$3A,$3B,$0F,$3D,$3E,$0F
-    .db $22,$29,$1A,$0F,  $22,$36,$17,$0F,  $22,$30,$21,$0F,  $22,$27,$17,$0F
-    .db $0F,$1C,$15,$14,$0F,$02,$38,$3C,$0F,$1C,$15,$14,$0F,$02,$38,$3C
+    .db $0F,$31,$32,$33,$0F,$35,$36,$37,$0F,$39,$3A,$3B,$0F,$3D,$3E,$0F     ;background palette
+;    .db $22,$29,$1A,$0F,  $22,$36,$17,$0F,  $22,$30,$21,$0F,  $22,$27,$17,$0F
+;    .db $0F,$1C,$15,$14,$0F,$02,$38,$3C,$0F,$1C,$15,$14,$0F,$02,$38,$3C     ;sprite palette data
+    .db $0F,$1C,$15,$20,$0F,$02,$38,$3C,$0F,$1C,$15,$14,$0F,$02,$38,$3C     ;sprite palette data
 
 
 sprites:
+;http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=6082
+;  76543210
+;  |||   ||
+;  |||   ++- Color Palette of sprite.  Choose which set of 4 from the 16 colors to use
+;  |||
+;  ||+------ Priority (0: in front of background; 1: behind background)
+;  |+------- Flip sprite horizontally
+;  +-------- Flip sprite vertically
     ;vert tile attr horiz
-    .db $80, $32, $00, $80   ;sprite 0
-    .db $80, $33, $00, $88   ;sprite 1
-    .db $88, $34, $00, $80   ;sprite 2
-    .db $88, $35, $00, $88   ;sprite 3
+    .db $80, $00, $00, $80   ;sprite 0
+    .db $80, $01, $00, $88   ;sprite 1
+    .db $88, $02, $00, $80   ;sprite 2
+    .db $88, $03, $00, $88   ;sprite 3
 
 
 
@@ -249,5 +258,5 @@ sprites:
     
     .bank 2
     .org $0000
-    .incbin "mario.chr"
+    .incbin "game.chr"
  
