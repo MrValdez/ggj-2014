@@ -91,13 +91,14 @@ clearmem:
     
 init:
     LDA #$80
-    RTI
 
     LDA #$00
     STA player_animation 
     
-    LDA #$00
+    LDA #$03
     STA avatar_mode
+
+    RTI
 
 ;;;;;;;;;;;;
 init_PPU:
@@ -213,15 +214,55 @@ AnimatePlayer:
     RTS
     
 AnimatePlayer_Frame1:
+    LDX avatar_mode
+    CPX #$00
+    BEQ AnimatePlayer_Frame1_forme1_branch
+    CPX #$01
+    BEQ AnimatePlayer_Frame1_forme2_branch
+    CPX #$02
+    BEQ AnimatePlayer_Frame1_forme3_branch
+    CPX #$03
+    BEQ AnimatePlayer_Frame1_forme4_branch
+    RTS
+    
+AnimatePlayer_Frame1_forme1_branch:    
+    JSR AnimatePlayer_Frame1_forme1
+    RTS
+AnimatePlayer_Frame1_forme2_branch:    
+    JSR AnimatePlayer_Frame1_forme2
+    RTS
+AnimatePlayer_Frame1_forme3_branch:    
     JSR AnimatePlayer_Frame1_forme3
-    ;JSR AnimatePlayer_Frame1_forme4
+    RTS
+AnimatePlayer_Frame1_forme4_branch:    
+    JSR AnimatePlayer_Frame1_forme4
     RTS
     
 AnimatePlayer_Frame2:
-    JSR AnimatePlayer_Frame2_forme3
-    ;JSR AnimatePlayer_Frame2_forme4
+    LDX avatar_mode
+    CPX #$00
+    BEQ AnimatePlayer_Frame2_forme1_branch
+    CPX #$01
+    BEQ AnimatePlayer_Frame2_forme2_branch
+    CPX #$02
+    BEQ AnimatePlayer_Frame2_forme3_branch
+    CPX #$03
+    BEQ AnimatePlayer_Frame2_forme4_branch
     RTS
     
+AnimatePlayer_Frame2_forme1_branch:    
+    JSR AnimatePlayer_Frame2_forme1
+    RTS
+AnimatePlayer_Frame2_forme2_branch:    
+    JSR AnimatePlayer_Frame2_forme2
+    RTS
+AnimatePlayer_Frame2_forme3_branch:    
+    JSR AnimatePlayer_Frame2_forme3
+    RTS
+AnimatePlayer_Frame2_forme4_branch:    
+    JSR AnimatePlayer_Frame2_forme4
+    RTS
+     
 UpdateInputs:
 Controller1_A: 
     ; top half
