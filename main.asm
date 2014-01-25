@@ -134,43 +134,47 @@ InfiniteLoop:
     JMP InfiniteLoop
 
 Gravity:    
+    ; BCC/BCS
+
+    ; if < 10, exit
+    LDA SPRITE_RAM
+;    ADC #$16        ;+16 from top
+    CMP #$A0
+    BCS exitGravity
+
+    CLC
     ; top half
-    LDA SPRITE_RAM 
-    CLC            
-    ADC #$01       
-    STA SPRITE_RAM 
-    STA SPRITE_RAM + 4
+    LDA SPRITE_RAM
+    ADC #$01      
+    STA SPRITE_RAM
+    STA SPRITE_RAM + 4     
 
     ; bottom half
-    LDA SPRITE_RAM + 8
-    CLC             
-    ADC #$01        
-    STA SPRITE_RAM + 8
-    STA SPRITE_RAM + 12
+    LDA SPRITE_RAM + 8     
+    ADC #$01       
+    STA SPRITE_RAM + 8     
+    STA SPRITE_RAM + 12    
+exitGravity:
+    RTS
 
 UpdateInputs:
 Controller1_A: 
     LDX id_avatar
     LDA sprites_updateconstants, x
     TAX
-
-    LDX id_avatar
-    LDA sprites_updateconstants, x
-    TAX
     
     ; top half
-    LDA SPRITE_RAM       ; load sprite Y position
-    CLC             ; make sure the carry flag is clear
-    SBC #$01        ; A = A + 1
-    STA SPRITE_RAM       ; save sprite Y position
-    STA SPRITE_RAM + 4      ; save sprite Y position
+    LDA SPRITE_RAM
+    SBC #$01      
+    STA SPRITE_RAM
+    STA SPRITE_RAM + 4     
 
     ; bottom half
-    LDA SPRITE_RAM + 8      ; load sprite Y position
-    CLC             ; make sure the carry flag is clear
-    SBC #$01        ; A = A + 1
-    STA SPRITE_RAM + 8      ; save sprite Y position
-    STA SPRITE_RAM + 12     ; save sprite Y position
+    LDA SPRITE_RAM + 8     
+    CLC           
+    SBC #$01       
+    STA SPRITE_RAM + 8     
+    STA SPRITE_RAM + 12    
     RTS
 Controller1_B:
     RTS
@@ -280,6 +284,7 @@ Controller1_RightDone:
 
 MainLoop:
     JSR ReadInput        
+    JSR Gravity
     RTS
     
 NMI:
