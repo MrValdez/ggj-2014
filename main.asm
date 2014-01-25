@@ -11,7 +11,10 @@
     .inesmap 0   ; mapper 0 = NROM, no bank swapping
     .inesmir 1   ; background mirroring
 
-    .rsset $0000
+    .rsset $0700
+player_animation .rs 1
+ANIMATION_TICK = $10
+
 
 ; http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=33378
 SPRITE_RAM = $0200
@@ -69,7 +72,10 @@ clearmem:
 init:
     LDA #$80
     RTI
-    
+
+    LDA #$00
+    STA player_animation    
+
 ;;;;;;;;;;;;
 init_PPU:
 ;http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=6082
@@ -161,6 +167,56 @@ Gravity:
 exitGravity:
     RTS
 
+AnimatePlayer:
+    LDX player_animation
+    INX
+    STX player_animation
+    
+    CPX ANIMATION_TICK
+    CPX #$01
+    BEQ AnimatePlayer_Frame1
+    BNE AnimatePlayer_Frame2
+    RTS
+    
+AnimatePlayer_Frame1:
+    ; area 1
+    LDA #$42
+    STA SPRITE_RAM + 1
+    
+    LDA SPRITE_RAM + 2
+    AND #%10111111
+    STA SPRITE_RAM + 2 
+
+    ; segment 3
+    LDA #$52
+    STA SPRITE_RAM + 9
+    
+    LDA SPRITE_RAM + 10
+    AND #%10111111
+    STA SPRITE_RAM + 10
+
+    RTS
+
+AnimatePlayer_Frame2:
+    LDA #$43
+    STA SPRITE_RAM + 1
+
+    LDA SPRITE_RAM + 2
+    ORA #%01000000    
+    STA SPRITE_RAM + 2    
+    
+    ; segment 3
+    LDA #$53
+    STA SPRITE_RAM + 9
+
+    LDA SPRITE_RAM + 10
+    ORA #%01000000
+    STA SPRITE_RAM + 10
+
+    LDX #$00
+    STX player_animation
+    RTS
+
 UpdateInputs:
 Controller1_A: 
     LDX id_avatar
@@ -189,6 +245,7 @@ Controller1_Select:
 Controller1_Start:
     RTS
 Controller1_Down:
+    JSR AnimatePlayer
     RTS
 Controller1_Left:   
     ; top half
@@ -212,8 +269,10 @@ Controller1_Left:
     LDA SPRITE_RAM + 8 + 4 + 3
     SBC #$01        
     STA SPRITE_RAM + 8 + 4 + 3
+    JSR AnimatePlayer
 out:
     RTS
+
 Controller1_Right:   
     ; top half
     LDA SPRITE_RAM + 3
@@ -235,6 +294,8 @@ Controller1_Right:
     LDA SPRITE_RAM + 8 + 4 + 3
     ADC #$01        
     STA SPRITE_RAM + 8 + 4 + 3
+
+    JSR AnimatePlayer
 out2:
     RTS
 
@@ -290,8 +351,8 @@ Controller1_RightDone:
     RTS
     
 EnemyUpdate:
-    LDX #13
-;    JMP DoEnemyUpdate
+    LDX #$0D
+;    JSR DoEnemyUpdate
 ;    JMP DoEnemyUpdate
 ;    JMP DoEnemyUpdate
 ;    JMP DoEnemyUpdate
@@ -301,41 +362,22 @@ DoEnemyUpdate:
     ; top half (HORZ)
 ;    SEC
 ;    LDA SPRITE_RAM + 3
-    ; can't go past wall
-    ;CMP LEFTWALL
-    ;CMP #$20
-    ;BCS out
-    
     SEC
     SBC #$01        
     STA SPRITE_RAM + 3,x
-    LDA SPRITE_RAM + 4 + 3,x
-    SBC #$01        
-    STA SPRITE_RAM + 4 + 3,x
+;    LDA SPRITE_RAM + 4 + 3,x
+;    SBC #$01        
+;    STA SPRITE_RAM + 4 + 3,x
 
-;    SEC
-;    LDA SPRITE_RAM + 3,x
+    ; bottom half
+;    LDA SPRITE_RAM + 8 + 3,x
+;    SBC #$01        
+;    STA SPRITE_RAM + 8 + 3,x
+;    LDA SPRITE_RAM + 8 + 4 + 3,x
+;    SBC #$01        
+;    STA SPRITE_RAM + 8 + 4 + 3,x
     
-;    ADC #$01        
-;    STA SPRITE_RAM + 3,x
-;;    LDA SPRITE_RAM + 4 + 3,x
-;;    ADC #$01        
-;;    STA SPRITE_RAM + 4 + 3,x
-
-;    CLC
-;    TXA
-;    ADC #$30
-;    TAX
-
-    ; bottom half (HORZ)
-;    LDA SPRITE_RAM + 8 + 3
-;    ADC #$01        
-;    STA SPRITE_RAM + 8 + 3
-;    LDA SPRITE_RAM + 8 + 4 + 3
-;    ADC #$01        
-;    STA SPRITE_RAM + 8 + 4 + 3
-;   
-;    RTS
+    RTS
 
 MainLoop:
     JSR ReadInput
@@ -391,11 +433,11 @@ sprites:
 ;    .db $88, $3C, $00, $80
 ;    .db $88, $3D, $00, $88
 
-    ; feet
-    .db $80, $40, $00, $80
-    .db $80, $41, $00, $88
-    .db $88, $50, $00, $80
-    .db $88, $51, $00, $88
+    ; player
+    .db $80, $42, $00, $80
+    .db $80, $43, $00, $88
+    .db $88, $52, $00, $80
+    .db $88, $53, $00, $88
 
     ; monster1
     .db $40, $2C, $00, $80
