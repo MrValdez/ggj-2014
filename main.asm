@@ -13,7 +13,7 @@
 
     .rsset $0700
 player_animation .rs 1
-ANIMATION_TICK = $10
+ANIMATION_TICK = $03
 
 
 ; http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=33378
@@ -172,10 +172,18 @@ AnimatePlayer:
     INX
     STX player_animation
     
-    CPX ANIMATION_TICK
-    CPX #$01
-    BEQ AnimatePlayer_Frame1
-    BNE AnimatePlayer_Frame2
+    ;CPX ANIMATION_TICK
+    CPX #$20
+    BCS AnimatePlayer_Frame1
+
+    CPX #$10
+    BCS AnimatePlayer_Frame2
+
+    LDX player_animation
+;    CPX #$06
+;    BCS AnimatePlayer_Frame1
+;    BEQ AnimatePlayer_Frame1
+;    BNE AnimatePlayer_Frame2
     RTS
     
 AnimatePlayer_Frame1:
@@ -211,6 +219,9 @@ AnimatePlayer_Frame1:
     AND #%10111111
     STA SPRITE_RAM + 10 + 4
 
+    LDX #$00
+    STX player_animation
+
     RTS
 
 AnimatePlayer_Frame2:
@@ -245,8 +256,6 @@ AnimatePlayer_Frame2:
     ORA #%01000000
     STA SPRITE_RAM + 10 + 4
 
-    LDX #$00
-    STX player_animation
     RTS
 
 UpdateInputs:
