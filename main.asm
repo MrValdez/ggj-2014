@@ -22,6 +22,7 @@ player_animation    .rs 1
 avatar_x            .rs 1
 avatar_y            .rs 1
 avatar_mode         .rs 1
+current_fade        .rs 1
 
     ; game states
     ; 00 = title
@@ -48,6 +49,7 @@ STAGE1_TARGET   = $80
 id_avatar  = 0
 id_enemy   = 1
 
+avatar_jump_power = $04
 
 ;;;;
 
@@ -107,6 +109,9 @@ init:
     LDA #$00
     STA avatar_mode
 
+    LDA #$00
+    STA current_fade
+    
     RTI
 
 ;;;;;;;;;;;;
@@ -324,18 +329,18 @@ AnimatePlayer_Frame2_forme4_branch:
     RTS
      
 UpdateInputs:
-Controller1_A: 
+Controller1_A:
     ; top half
     LDA SPRITE_RAM
     CLC
-    SBC #$01      
+    SBC #avatar_jump_power       
     STA SPRITE_RAM
     STA SPRITE_RAM + 4     
 
     ; bottom half
     LDA SPRITE_RAM + 8     
     CLC           
-    SBC #$01       
+    SBC #avatar_jump_power
     STA SPRITE_RAM + 8     
     STA SPRITE_RAM + 12    
     RTS
