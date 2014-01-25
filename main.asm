@@ -13,7 +13,10 @@
 
     .rsset $0000
 
-buttons1    .rs 1
+; http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=33378
+SPRITE_RAM = $0200
+
+id_avatar  = 0
 
 ;;;;
 
@@ -39,6 +42,7 @@ RESET:
     STX $4010    ; disable DMC IRQs    
 
     JSR vblankwait ; first vblank
+    JSR init_PPU
 
 clearmem:
     LDA #$00
@@ -50,39 +54,19 @@ clearmem:
     STA $0600, x
     STA $0700, x
     LDA #$FE
-    STA $0200, x
+    STA SPRITE_RAM, x
     INX
     BNE clearmem
 
-    JSR vblankwait ; second vblank
+    JSR vblankwait ; second vblank    
+    JSR init_PPU
     
-;;;;;;;;;;;    
-LoadPalettes:
-    LDA $2002    ; read PPU status to reset the high/low latch
-    LDA #$3F
-    STA $2006    ; write the high byte of $3F00 address
-    LDA #$00
-    STA $2006    ; write the low byte of $3F00 address
-    LDX #$00
-
-LoadPalettesLoop:
-    LDA palette, x        ;load palette byte
-    STA $2007             ;write to PPU
-    INX                   ;set index to next byte
-    CPX #$20            
-    BNE LoadPalettesLoop  ;if x = $20, 32 bytes copied, all done
-
-LoadSprites:
-    LDX #$00              ; start at 0
-LoadSpritesLoop:
-    LDA sprites, x        ; load data from address (sprites +  x)
-    STA $0200, x          ; store into RAM address ($0200 + x)
-    INX                   ; X = X + 1
-    CPX #$20              ; Compare X to hex $20, decimal 32
-    BNE LoadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
-                        ; if compare was equal to 32, keep going down
-
+init:
+    LDA #$80
+    RTI
+    
 ;;;;;;;;;;;;
+init_PPU:
 ;http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=6082
         ;  PPUCTRL ($2000)
         ;  76543210
@@ -118,6 +102,32 @@ LoadSpritesLoop:
 ;    LDA #%00011110 ; enable sprites, enable background
     LDA #%00010000 ; enable sprites
     STA $2001
+
+LoadPalettes:
+    LDA $2002    ; read PPU status to reset the high/low latch
+    LDA #$3F
+    STA $2006    ; write the high byte of $3F00 address
+    LDA #$00
+    STA $2006    ; write the low byte of $3F00 address
+    LDX #$00
+LoadPalettesLoop:
+    LDA palette, x        ;load palette byte
+    STA $2007             ;write to PPU
+    INX                   ;set index to next byte
+    CPX #$20            
+    BNE LoadPalettesLoop  ;if x = $20, 32 bytes copied, all done
+
+LoadSprites:
+    LDX #$00              ; start at 0
+LoadSpritesLoop:
+    LDA sprites, x        ; load data from address (sprites +  x)
+    STA SPRITE_RAM, x          ; store into RAM address ($0200 + x)
+    INX                   ; X = X + 1
+    CPX #$20              ; Compare X to hex $20, decimal 32
+    BNE LoadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
+                        ; if compare was equal to 32, keep going down
+
+    RTS
 ;;;;;;;;;;;;    
     
 InfiniteLoop:
@@ -125,6 +135,23 @@ InfiniteLoop:
 
 UpdateInputs:
 Controller1_A: 
+    LDX id_avatar
+    LDA sprites_updateconstants, x
+    TAX
+    
+    ; top half
+    LDA SPRITE_RAM       ; load sprite Y position
+    CLC             ; make sure the carry flag is clear
+    ADC #$01        ; A = A + 1
+    STA SPRITE_RAM       ; save sprite Y position
+    STA SPRITE_RAM + 4      ; save sprite Y position
+
+    ; bottom half
+    LDA SPRITE_RAM + 8      ; load sprite Y position
+    CLC             ; make sure the carry flag is clear
+    ADC #$01        ; A = A + 1
+    STA SPRITE_RAM + 8      ; save sprite Y position
+    STA SPRITE_RAM + 12     ; save sprite Y position
     RTS
 Controller1_B:
     RTS
@@ -137,21 +164,44 @@ Controller1_Start:
 Controller1_Down:
     RTS
 Controller1_Left:
-    RTS
-Controller1_Right:
-    LDA $0203       ; load sprite X position
+    LDX id_avatar
+    LDA sprites_updateconstants, x
+    TAX
+    
+    ; top half
+    LDA SPRITE_RAM       ; load sprite Y position
     CLC             ; make sure the carry flag is clear
     ADC #$01        ; A = A + 1
-    STA $0203       ; save sprite X position
+    STA SPRITE_RAM       ; save sprite Y position
+    STA SPRITE_RAM + 4      ; save sprite Y position
+
+    ; bottom half
+    LDA SPRITE_RAM + 8      ; load sprite Y position
+    CLC             ; make sure the carry flag is clear
+    ADC #$01        ; A = A + 1
+    STA SPRITE_RAM + 8      ; save sprite Y position
+    STA SPRITE_RAM + 12     ; save sprite Y position
     RTS
+Controller1_Right:
+    LDX id_avatar
+    LDA sprites_updateconstants, x
+    TAX
     
-NMI:
-    LDA #$00
-    STA $2003  ; set the low byte (00) of the RAM address
-    LDA #$02
-    STA $4014  ; set the high byte (02) of the RAM address, start the transfer
-    JSR ReadInput
-        
+    ; top half
+    LDA SPRITE_RAM       ; load sprite Y position
+    CLC             ; make sure the carry flag is clear
+    SBC #$01        ; A = A + 1
+    STA SPRITE_RAM       ; save sprite Y position
+    STA SPRITE_RAM + 4      ; save sprite Y position
+
+    ; bottom half
+    LDA SPRITE_RAM + 8      ; load sprite Y position
+    CLC             ; make sure the carry flag is clear
+    SBC #$01        ; A = A + 1
+    STA SPRITE_RAM + 8      ; save sprite Y position
+    STA SPRITE_RAM + 12     ; save sprite Y position
+    RTS
+
 ReadInput:
 
 ReadController1:
@@ -159,57 +209,61 @@ ReadController1:
     STA $4016
     LDA #$00
     STA $4016
-    LDX #$08
-ReadController1Loop:
-    LDA $4016
-    LSR A            ; bit0 -> Carry
-    ROL buttons1     ; bit0 <- Carry
-    DEX
-    BNE ReadController1Loop
-    ;RTS
 
-    LDA buttons1
     ; A B S St U D L R
-    AND #%10000000
+    LDA $4016
+    AND #%00000001
     BEQ Controller1_ADone
     JSR Controller1_A
 Controller1_ADone:    
-    LDA buttons1
-    AND #%01000000
+    LDA $4016
+    AND #%00000001
     BEQ Controller1_BDone
     JSR Controller1_B
 Controller1_BDone:    
-    LDA buttons1
-    AND #%00100000
+    LDA $4016
+    AND #%00000001
     BEQ Controller1_SelectDone
     JSR Controller1_Select
 Controller1_SelectDone:    
-    LDA buttons1
-    AND #%00010000
+    LDA $4016
+    AND #%00000001
     BEQ Controller1_StartDone
     JSR Controller1_Start
 Controller1_StartDone:    
-    LDA buttons1
-    AND #%00001000
+    LDA $4016
+    AND #%00000001
     BEQ Controller1_UpDone
     JSR Controller1_Up
 Controller1_UpDone:    
-    LDA buttons1
-    AND #%00000100
+    LDA $4016
+    AND #%00000001
     BEQ Controller1_DownDone
     JSR Controller1_Down
 Controller1_DownDone:    
-    LDA buttons1
-    AND #%00000010
+    LDA $4016
+    AND #%00000001
     BEQ Controller1_LeftDone
     JSR Controller1_Left
 Controller1_LeftDone:    
-    LDA buttons1
+    LDA $4016
     AND #%00000001
     BEQ Controller1_RightDone
     JSR Controller1_Right
 Controller1_RightDone:    
-    RTI
+    RTS
+
+MainLoop:
+    JSR ReadInput        
+    RTS
+    
+NMI:
+    LDA #$00
+    STA $2003  ; set the low byte (00) of the RAM address
+    LDA #$02
+    STA $4014  ; set the high byte (02) of the RAM address, start the transfer
+
+    JSR MainLoop
 
 PPUCleanUp:
     ;;This is the PPU clean up section, so rendering the next frame starts properly.
@@ -242,11 +296,18 @@ sprites:
 ;  ||+------ Priority (0: in front of background; 1: behind background)
 ;  |+------- Flip sprite horizontally
 ;  +-------- Flip sprite vertically
+
     ;vert tile attr horiz
-    .db $80, $00, $00, $80   ;sprite 0
-    .db $80, $01, $00, $88   ;sprite 1
-    .db $88, $02, $00, $80   ;sprite 2
-    .db $88, $03, $00, $88   ;sprite 3
+    
+    ; Square Sprite
+    .db $80, $2C, $00, $80
+    .db $80, $2D, $00, $88
+    .db $88, $3C, $00, $80
+    .db $88, $3D, $00, $88
+
+sprites_updateconstants:                  ;constants for the use of the sprite_RAM constant           
+  .db $00,$10,$20,$30             ;4 sprites for each meta sprite, so add $10 for each meta sprite we process
+
 
 
 
