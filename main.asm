@@ -12,6 +12,8 @@
     .inesmir 1   ; background mirroring
 
     .rsset $0000    ; pointers
+pointerLo  .rs 1   ; pointer variables are declared in RAM
+pointerHi  .rs 1   ; low byte first, high byte immediately after
     .rsset $0100    ; stacks
     .rsset $0200    ; sprites
     .rsset $0300    ; sound
@@ -34,7 +36,8 @@ avatar_mode         .rs 1
 
 ; http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=33378
 SPRITE_RAM = $0200
-TOTAL_SPRITES = 20
+;TOTAL_SPRITES = 20
+TOTAL_SPRITES = $10
 
 ANIMATION_TICK = $03
 LEFTWALL    = $20
@@ -49,8 +52,8 @@ id_enemy   = 1
 ;;;;
 
     .bank 0
-    .org $8000  ;;$c000
-    ;.org $c000
+    ;.org $8000  ;;$c000
+    .org $c000
 
     .include "animation.asm"
 
@@ -74,6 +77,9 @@ RESET:
     JSR vblankwait ; first vblank
     JSR init_PPU
 
+InfiniteLoop:
+    JMP InfiniteLoop
+
 clearmem:
     LDA #$00
     STA $0000, x
@@ -89,6 +95,7 @@ clearmem:
     BNE clearmem
 
     JSR vblankwait ; second vblank    
+    JSR init
     JSR init_PPU
     
 init:
@@ -104,41 +111,6 @@ init:
 
 ;;;;;;;;;;;;
 init_PPU:
-;http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=6082
-        ;  PPUCTRL ($2000)
-        ;  76543210
-        ;  | ||||||
-        ;  | ||||++- Base nametable address
-        ;  | ||||    (0 = $2000; 1 = $2400; 2 = $2800; 3 = $2C00)
-        ;  | |||+--- VRAM address increment per CPU read/write of PPUDATA
-        ;  | |||     (0: increment by 1, going across; 1: increment by 32, going down)
-        ;  | ||+---- Sprite pattern table address for 8x8 sprites (0: $0000; 1: $1000)
-        ;  | |+----- Background pattern table address (0: $0000; 1: $1000)
-        ;  | +------ Sprite size (0: 8x8; 1: 8x16)
-        ;  |
-        ;  +-------- Generate an NMI at the start of the
-        ;            vertical blanking interval vblank (0: off; 1: on)
-;    LDA #%10010000 ;enable NMI, sprites from Pattern 0, background from Pattern 1
-    LDA #%10000000 ;enable NMI, sprites from Pattern 0
-    STA $2000
-
-;http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=4440
-        ;PPUMASK ($2001)
-        ;76543210
-        ;||||||||
-        ;|||||||+- Grayscale (0: normal color; 1: AND all palette entries
-        ;|||||||   with 0x30, effectively producing a monochrome display;
-        ;|||||||   note that colour emphasis STILL works when this is on!)
-        ;||||||+-- Disable background clipping in leftmost 8 pixels of screen
-        ;|||||+--- Disable sprite clipping in leftmost 8 pixels of screen
-        ;||||+---- Enable background rendering
-        ;|||+----- Enable sprite rendering
-        ;||+------ Intensify reds (and darken other colors)
-        ;|+------- Intensify greens (and darken other colors)
-        ;+-------- Intensify blues (and darken other colors)
-;    LDA #%00011110 ; enable sprites, enable background
-    LDA #%00010000 ; enable sprites
-    STA $2001
 
 LoadPalettes:
     LDA $2002    ; read PPU status to reset the high/low latch
@@ -164,12 +136,90 @@ LoadSpritesLoop:
     BNE LoadSpritesLoop   ; Branch to LoadSpritesLoop if compare was Not Equal to zero
                           ; if compare was equal to X, keep going down
 
+LoadBackground:
+  LDA $2002             ; read PPU status to reset the high/low latch
+  LDA #$20
+  STA $2006             ; write the high byte of $2000 address
+  LDA #$00
+  STA $2006             ; write the low byte of $2000 address
+
+  LDA #$00
+  STA pointerLo       ; put the low byte of the address of background into pointer
+  LDA #HIGH(background)
+  STA pointerHi       ; put the high byte of the address into pointer
+  
+  LDX #$00            ; start at pointer + 0
+  LDY #$00
+OutsideLoop:
+  
+InsideLoop:
+  LDA [pointerLo], y  ; copy one background byte from address in pointer plus Y
+  STA $2007           ; this runs 256 * 4 times
+  
+  INY                 ; inside loop counter
+  CPY #$00
+  BNE InsideLoop      ; run the inside loop 256 times before continuing down
+  
+  INC pointerHi       ; low byte went 0 to 256, so high byte needs to be changed now
+  
+  INX
+  CPX #$04
+  BNE OutsideLoop     ; run the outside loop 256 times before continuing down
+                        ; if compare was equal to 128, keep going down
+                        
+;LoadAttribute:
+;    LDA $2002             ; read PPU status to reset the high/low latch
+;    LDA #$23
+;    STA $2006             ; write the high byte of $23C0 address
+;    LDA #$C0
+;    STA $2006             ; write the low byte of $23C0 address
+;    LDX #$00              ; start out at 0
+
+;LoadAttributeLoop:
+;    LDA attribute, x      ; load data from address (attribute + the value in x)
+;    STA $2007             ; write to PPU
+;    INX                   ; X = X + 1
+;    CPX #$08              ; Compare X to hex $08, decimal 8 - copying 8 bytes
+;    BNE LoadAttributeLoop
+
+;http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=6082
+        ;  PPUCTRL ($2000)
+        ;  76543210
+        ;  | ||||||
+        ;  | ||||++- Base nametable address
+        ;  | ||||    (0 = $2000; 1 = $2400; 2 = $2800; 3 = $2C00)
+        ;  | |||+--- VRAM address increment per CPU read/write of PPUDATA
+        ;  | |||     (0: increment by 1, going across; 1: increment by 32, going down)
+        ;  | ||+---- Sprite pattern table address for 8x8 sprites (0: $0000; 1: $1000)
+        ;  | |+----- Background pattern table address (0: $0000; 1: $1000)
+        ;  | +------ Sprite size (0: 8x8; 1: 8x16)
+        ;  |
+        ;  +-------- Generate an NMI at the start of the
+        ;            vertical blanking interval vblank (0: off; 1: on)
+  LDA #%10010000   ; enable NMI, sprites from Pattern Table 0, background from Pattern Table 1
+  STA $2000
+
+;http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=4440
+        ;PPUMASK ($2001)
+        ;76543210
+        ;||||||||
+        ;|||||||+- Grayscale (0: normal color; 1: AND all palette entries
+        ;|||||||   with 0x30, effectively producing a monochrome display;
+        ;|||||||   note that colour emphasis STILL works when this is on!)
+        ;||||||+-- Disable background clipping in leftmost 8 pixels of screen
+        ;|||||+--- Disable sprite clipping in leftmost 8 pixels of screen
+        ;||||+---- Enable background rendering
+        ;|||+----- Enable sprite rendering
+        ;||+------ Intensify reds (and darken other colors)
+        ;|+------- Intensify greens (and darken other colors)
+        ;+-------- Intensify blues (and darken other colors)
+
+  LDA #%00011110   ; enable sprites, enable background, no clipping on left side
+  STA $2001
+
     RTS
 ;;;;;;;;;;;;    
     
-InfiniteLoop:
-    JMP InfiniteLoop
-
 avatarPos:
     LDA SPRITE_RAM
     STA avatar_y
@@ -471,7 +521,7 @@ NMI:
     STA $2003  ; set the low byte (00) of the RAM address
     LDA #$02
     STA $4014  ; set the high byte (02) of the RAM address, start the transfer
-
+    
     JSR MainLoop
 
 PPUCleanUp:
@@ -482,18 +532,131 @@ PPUCleanUp:
     STA $2001
     LDA #$00        ;;tell the ppu there is no background scrolling
     STA $2005
-    STA $2005
 
     RTI
        
 ;; Vectors
     .bank 1
     .org $E000
+
+background:
+  .db $60,$60,$60,$60,$60,$60,$60,$60,$60,$60,$60,$60,$60,$60,$60,$60  ;;row 1
+  .db $60,$60,$60,$60,$60,$60,$60,$60,$60,$60,$60,$60,$60,$60,$60,$60  ;;all sky
+
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 2
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+
+  .db $24,$24,$24,$24,$45,$45,$24,$24,$45,$45,$45,$45,$45,$45,$24,$24  ;;row 3
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$53,$54,$24,$24  ;;some brick tops
+
+  .db $24,$24,$24,$24,$47,$47,$24,$24,$47,$47,$47,$47,$47,$47,$24,$24  ;;row 4
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$55,$56,$24,$24  ;;brick bottoms
+
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 5
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 6
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+
+  .db $24,$24,$24,$24,$45,$45,$24,$24,$45,$45,$45,$45,$45,$45,$24,$24  ;;row 7
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$53,$54,$24,$24  ;;some brick tops
+
+  .db $24,$24,$24,$24,$47,$47,$24,$24,$47,$47,$47,$47,$47,$47,$24,$24  ;;row 8
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$55,$56,$24,$24  ;;brick bottoms
+
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 9
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 10
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+
+  .db $24,$24,$24,$24,$45,$45,$24,$24,$45,$45,$45,$45,$45,$45,$24,$24  ;;row 11
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$53,$54,$24,$24  ;;some brick tops
+
+  .db $24,$24,$24,$24,$47,$47,$24,$24,$47,$47,$47,$47,$47,$47,$24,$24  ;;row 12
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$55,$56,$24,$24  ;;brick bottoms
+
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 13
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 14
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+
+  .db $24,$24,$24,$24,$45,$45,$24,$24,$45,$45,$45,$45,$45,$45,$24,$24  ;;row 15
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$53,$54,$24,$24  ;;some brick tops
+
+  .db $24,$24,$24,$24,$47,$47,$24,$24,$47,$47,$47,$47,$47,$47,$24,$24  ;;row 16
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$55,$56,$24,$24  ;;brick bottoms
+
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 17
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 18
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+
+  .db $24,$24,$24,$24,$45,$45,$24,$24,$45,$45,$45,$45,$45,$45,$24,$24  ;;row 19
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$53,$54,$24,$24  ;;some brick tops
+
+  .db $24,$24,$24,$24,$47,$47,$24,$24,$47,$47,$47,$47,$47,$47,$24,$24  ;;row 20
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$55,$56,$24,$24  ;;brick bottoms
+
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 21
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 22
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+
+  .db $24,$24,$24,$24,$45,$45,$24,$24,$45,$45,$45,$45,$45,$45,$24,$24  ;;row 23
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$53,$54,$24,$24  ;;some brick tops
+
+  .db $24,$24,$24,$24,$47,$47,$24,$24,$47,$47,$47,$47,$47,$47,$24,$24  ;;row 24
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$55,$56,$24,$24  ;;brick bottoms
+
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 25
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+
+  .db $60,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 26
+  .db $60,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+
+  .db $24,$24,$24,$24,$45,$45,$24,$24,$45,$45,$45,$45,$45,$45,$24,$24  ;;row 27
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$53,$54,$24,$24  ;;some brick tops
+
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 28
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 29
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;row 30
+  .db $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24,$24  ;;all sky
+
+attribute:
+  .db %00000000, %00010000, %01010000, %00010000, %00000000, %00000000, %00000000, %00110000
+  .db %00000000, %00010000, %01010000, %00010000, %00000000, %00000000, %00000000, %00110000
+  .db %00000000, %00010000, %01010000, %00010000, %00000000, %00000000, %00000000, %00110000
+  .db %00000000, %00010000, %01010000, %00010000, %00000000, %00000000, %00000000, %00110000
+  .db %00000000, %00010000, %01010000, %00010000, %00000000, %00000000, %00000000, %00110000
+  .db %00000000, %00010000, %01010000, %00010000, %00000000, %00000000, %00000000, %00110000
+  .db %00000000, %00010000, %01010000, %00010000, %00000000, %00000000, %00000000, %00110000
+  .db %00000000, %00010000, %01010000, %00010000, %00000000, %00000000, %00000000, %00110000
+
+
+  .db $24,$24,$24,$24, $47,$47,$24,$24 
+  .db $47,$47,$47,$47, $47,$47,$24,$24 
+  .db $24,$24,$24,$24 ,$24,$24,$24,$24
+  .db $24,$24,$24,$24, $55,$56,$24,$24  ;;brick bottoms
+  .db $47,$47,$47,$47, $47,$47,$24,$24 
+  .db $24,$24,$24,$24 ,$24,$24,$24,$24
+  .db $24,$24,$24,$24, $55,$56,$24,$24 
+
 palette:
-    .db $0F,$31,$32,$33,$0F,$35,$36,$37,$0F,$39,$3A,$3B,$0F,$3D,$3E,$0F     ;background palette
-;    .db $22,$29,$1A,$0F,  $22,$36,$17,$0F,  $22,$30,$21,$0F,  $22,$27,$17,$0F
-;    .db $0F,$1C,$15,$14,$0F,$02,$38,$3C,$0F,$1C,$15,$14,$0F,$02,$38,$3C     ;sprite palette data
-    .db $0F,$1C,$15,$20,$0F,$02,$38,$3C,$0F,$1C,$15,$14,$0F,$02,$38,$3C     ;sprite palette data
+;    .db $0F,$31,$32,$33,$0F,$35,$36,$37,$0F,$39,$3A,$3B,$0F,$3D,$3E,$0F     ;background palette
+  .db $22,$29,$1A,$0F,  $22,$36,$17,$0F,  $22,$30,$21,$0F,  $22,$27,$17,$0F   ;;background palette
+
+    .db $22,$29,$1A,$0F,  $22,$36,$17,$0F,  $22,$30,$21,$0F,  $22,$27,$17,$0F  ;mario
+
+;    .db $0F,$27,$21,$19,$0F,$02,$38,$3C,$0F,$1C,$15,$14,$0F,$02,$38,$3C     ;sprite palette data
+;  .db $22,$29,$1A,$0F,  $22,$36,$17,$0F,  $22,$30,$21,$0F,  $22,$27,$17,$0F   ;;background palette
 
 
 sprites:
@@ -530,13 +693,7 @@ sprites:
 ;    .db $A0, $2D, $00, $E8
 ;    .db $A8, $3C, $00, $E0
 ;    .db $A8, $3D, $00, $E8
-
-sprite_formes:
-    .db $2C, $2D, $3C, $3D
-    .db $2E, $2F, $3E, $3F
-    .db $40, $41, $50, $51
-    .db $42, $43, $52, $53
-
+    
 ;;;;;;;;;;
     .org $FFFA
     .dw NMI
@@ -545,5 +702,6 @@ sprite_formes:
     
     .bank 2
     .org $0000
-    .incbin "game.chr"
+;    .incbin "game.chr"
+    .incbin "mario.chr"
  
