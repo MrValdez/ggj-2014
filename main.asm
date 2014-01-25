@@ -11,26 +11,46 @@
     .inesmap 0   ; mapper 0 = NROM, no bank swapping
     .inesmir 1   ; background mirroring
 
-    .rsset $0700
-player_animation .rs 1
-ANIMATION_TICK = $03
+    .rsset $0000    ; pointers
+    .rsset $0100    ; stacks
+    .rsset $0200    ; sprites
+    .rsset $0300    ; sound
+    .rsset $0700    ; variables
+player_animation    .rs 1
+avatar_x            .rs 1
+avatar_y            .rs 1
+avatar_mode         .rs 1
+
+    ; game states
+    ; 00 = title
+    ; 01 = main menu
+    ; 02 = stage 1 (sight)
+    ; 03 = stage 2 (form)
+    ; 03 = stage 3 (birth)
+    ; 04 = stage 4 (violence)
+    ; 05 = stage 5 (war)
+    ; 06 = stage 6 (death)
 
 
 ; http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=33378
 SPRITE_RAM = $0200
 TOTAL_SPRITES = 20
 
+ANIMATION_TICK = $03
 LEFTWALL    = $20
 RIGHTWALL   = $DE
 
 id_avatar  = 0
 id_enemy   = 1
 
+
 ;;;;
 
     .bank 0
     .org $8000  ;;$c000
     ;.org $c000
+
+    .include "animation.asm"
 
 vblankwait:
     BIT $2002
@@ -74,7 +94,10 @@ init:
     RTI
 
     LDA #$00
-    STA player_animation    
+    STA player_animation 
+    
+    LDA #$00
+    STA avatar_mode
 
 ;;;;;;;;;;;;
 init_PPU:
@@ -144,6 +167,13 @@ LoadSpritesLoop:
 InfiniteLoop:
     JMP InfiniteLoop
 
+avatarPos:
+    LDA SPRITE_RAM
+    STA avatar_y
+    LDA SPRITE_RAM + 3
+    STA avatar_x
+    RTS
+
 Gravity:    
     ; BCC/BCS
 
@@ -180,90 +210,20 @@ AnimatePlayer:
     BCS AnimatePlayer_Frame2
 
     LDX player_animation
-;    CPX #$06
-;    BCS AnimatePlayer_Frame1
-;    BEQ AnimatePlayer_Frame1
-;    BNE AnimatePlayer_Frame2
     RTS
     
 AnimatePlayer_Frame1:
-    ; segment 1
-    LDA #$42
-    STA SPRITE_RAM + 1
-    
-    LDA SPRITE_RAM + 2
-    AND #%10111111
-    STA SPRITE_RAM + 2 
-
-    ; segment 2
-    LDA #$43
-    STA SPRITE_RAM + 1 + 4
-    
-    LDA SPRITE_RAM + 2 + 4
-    AND #%10111111
-    STA SPRITE_RAM + 2 + 4
-
-    ; segment 3
-    LDA #$52
-    STA SPRITE_RAM + 9
-    
-    LDA SPRITE_RAM + 10
-    AND #%10111111
-    STA SPRITE_RAM + 10
-
-    ; segment 4
-    LDA #$53
-    STA SPRITE_RAM + 9 + 4
-    
-    LDA SPRITE_RAM + 10 + 4
-    AND #%10111111
-    STA SPRITE_RAM + 10 + 4
-
-    LDX #$00
-    STX player_animation
-
+    JSR AnimatePlayer_Frame1_forme3
+    ;JSR AnimatePlayer_Frame1_forme4
     RTS
-
+    
 AnimatePlayer_Frame2:
-    ; segment 1
-    LDA #$43
-    STA SPRITE_RAM + 1
-
-    LDA SPRITE_RAM + 2
-    ORA #%01000000    
-    STA SPRITE_RAM + 2    
-
-    ; segment 2
-    LDA #$42
-    STA SPRITE_RAM + 1 + 4
-
-    LDA SPRITE_RAM + 2 + 4
-    ORA #%01000000    
-    STA SPRITE_RAM + 2 + 4
-    
-    ; segment 3
-    LDA #$53
-    STA SPRITE_RAM + 9
-
-    LDA SPRITE_RAM + 10
-    ORA #%01000000
-    STA SPRITE_RAM + 10
-
-    LDA #$52
-    STA SPRITE_RAM + 9 + 4
-
-    LDA SPRITE_RAM + 10 + 4
-    ORA #%01000000
-    STA SPRITE_RAM + 10 + 4
-
+    JSR AnimatePlayer_Frame2_forme3
+    ;JSR AnimatePlayer_Frame2_forme4
     RTS
-
+    
 UpdateInputs:
 Controller1_A: 
-    LDX id_avatar
-    LDA sprites_updateconstants, x
-    TAX
-    
     ; top half
     LDA SPRITE_RAM
     SBC #$01      
@@ -475,28 +435,34 @@ sprites:
 ;    .db $88, $3D, $00, $88
 
     ; player
-    .db $80, $42, $00, $80
-    .db $80, $43, $00, $88
-    .db $88, $52, $00, $80
-    .db $88, $53, $00, $88
+    .db $80, $42, $00, $20
+    .db $80, $43, $00, $28
+    .db $88, $52, $00, $20
+    .db $88, $53, $00, $28
 
-    ; monster1
-    .db $40, $2C, $00, $80
-    .db $40, $2D, $00, $88
-    .db $48, $3C, $00, $80
-    .db $48, $3D, $00, $88
+   ; monster1 (test)
+;    .db $A0, $2C, $00, $30
+;    .db $A0, $2D, $00, $38
+;    .db $A8, $3C, $00, $30
+;    .db $A8, $3D, $00, $38
+
+    ; monster1 (main)
+;    .db $40, $2C, $00, $80
+;    .db $40, $2D, $00, $88
+;    .db $48, $3C, $00, $80
+;    .db $48, $3D, $00, $88
 
     ; monster2
-    .db $10, $2C, $00, $70
-    .db $10, $2D, $00, $78
-    .db $18, $3C, $00, $70
-    .db $18, $3D, $00, $78
+    .db $A0, $2C, $00, $E0
+    .db $A0, $2D, $00, $E8
+    .db $A8, $3C, $00, $E0
+    .db $A8, $3D, $00, $E8
 
-sprites_updateconstants:                  ;constants for the use of the SPRITE_RAM constant           
-  .db $00,$10,$20,$30             ;4 sprites for each meta sprite, so add $10 for each meta sprite we process
-
-
-
+sprite_formes:
+    .db $2C, $2D, $3C, $3D
+    .db $2E, $2F, $3E, $3F
+    .db $40, $41, $50, $51
+    .db $42, $43, $52, $53
 
 ;;;;;;;;;;
     .org $FFFA
