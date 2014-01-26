@@ -29,13 +29,15 @@ stage1_monsterA     .rs 1
 stage2_monsterA     .rs 1
 stage3_monsterA     .rs 1
 
+enemy1_dir          .rs 1
+
 current_stage       .rs 1
     ; game states
     ; 00 = title
     ; 01 = main menu
     ; 02 = stage 1 (sight)
-    ; 03 = stage 2 (form)
-    ; 03 = stage 3 (birth)
+    ; 03 = stage 2 (form/birth/re-birth/evolution)
+    ; 03 = stage 3 (reflection)
     ; 04 = stage 4 (violence)
     ; 05 = stage 5 (war)
     ; 06 = stage 6 (death)
@@ -125,6 +127,8 @@ init:
 
     STA stage1_monsterA
     STA stage2_monsterA
+    
+    STA enemy1_dir
     RTI
 
 ;;;;;;;;;;;;
@@ -574,36 +578,62 @@ OnCollision:
     RTS
     
 EnemyUpdate:
-    JSR CheckCollision
+    JSR DoEnemyUpdate_Move
 
-;    LDX #$0D
-;    JSR DoEnemyUpdate
-;    JMP DoEnemyUpdate
-;    JMP DoEnemyUpdate
-;    JMP DoEnemyUpdate
     RTS
     
-DoEnemyUpdate:
+DoEnemyUpdate_Move:   
+    LDA enemy1_dir
+    CMP #$00
+    BEQ DoEnemyUpdate_MoveRight
+
+    JMP DoEnemyUpdate_MoveLeft
+    
+    RTS
+    
+DoEnemyUpdate_MoveRight:        
     ; top half (HORZ)
-;    SEC
-;    LDA SPRITE_RAM + 3
-    SEC
-    SBC #$01        
-    STA SPRITE_RAM + 3,x
-;    LDA SPRITE_RAM + 4 + 3,x
-;    SBC #$01        
-;    STA SPRITE_RAM + 4 + 3,x
+    LDA SPRITE_RAM + 16 + 3
+    CLC
+    ADC #$2
 
-    ; bottom half
-;    LDA SPRITE_RAM + 8 + 3,x
-;    SBC #$01        
-;    STA SPRITE_RAM + 8 + 3,x
-;    LDA SPRITE_RAM + 8 + 4 + 3,x
-;    SBC #$01        
-;    STA SPRITE_RAM + 8 + 4 + 3,x
-    
+    CMP #RIGHTWALL
+    BCS DoEnemyUpdate_Switch
+
+    STA SPRITE_RAM + 16 + 3
+    STA SPRITE_RAM + 16 + 8 + 3
+    CLC
+    ADC #$8     ;monster is 16 pixels wide
+    STA SPRITE_RAM + 16 + 4 + 3
+    STA SPRITE_RAM + 16 + 8 + 4 + 3
+
     RTS
 
+DoEnemyUpdate_MoveLeft:        
+    ; top half (HORZ)
+    LDA SPRITE_RAM + 16 + 3
+    CLC
+    SBC #$1
+
+    CMP #LEFTWALL
+    BCC DoEnemyUpdate_Switch
+
+    STA SPRITE_RAM + 16 + 3
+    STA SPRITE_RAM + 16 + 8 + 3
+    CLC
+    SBC #$4     ;monster is 16 pixels wide
+    STA SPRITE_RAM + 16 + 4 + 3
+    STA SPRITE_RAM + 16 + 8 + 4 + 3
+
+    RTS
+    
+DoEnemyUpdate_Switch:    
+    LDA enemy1_dir
+    EOR #$FF
+    STA enemy1_dir
+    
+    RTS
+    
 FadeUpdate:
     LDA current_stage
     CMP #$03            ; fade only after stage 3
@@ -673,6 +703,7 @@ FadeExit:
 MainLoop:
     JSR ReadInput
     JSR Gravity
+    JSR CheckCollision
     JSR EnemyUpdate
     JSR FadeUpdate
     RTS
