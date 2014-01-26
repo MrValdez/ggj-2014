@@ -526,7 +526,7 @@ Stage1_CheckCollision_Go:
     STA SPRITE_RAM + 16 + 4 + 1
     LDA #$3F
     STA SPRITE_RAM + 16 + 8 + 4 + 1
-    
+        
     LDA stage1_monsterA
     ADC #$01
     STA stage1_monsterA
@@ -572,6 +572,16 @@ Stage2_CheckCollision_Go:
     STA SPRITE_RAM + 16 + 4 + 1
     LDA #$51
     STA SPRITE_RAM + 16 + 8 + 4 + 1
+
+    ; transform monster palette
+    LDA #$01
+    STA SPRITE_RAM + 16 + 2
+    LDA #$01
+    STA SPRITE_RAM + 16 + 8 + 2
+    LDA #$01
+    STA SPRITE_RAM + 16 + 4 + 2
+    LDA #$01
+    STA SPRITE_RAM + 16 + 8 + 4 + 2
 
     LDA stage2_monsterA
     ADC #$01
@@ -662,8 +672,8 @@ DoEnemyUpdate_Switch:
     
 FadeUpdate:
     LDA current_stage
-    CMP #$03            ; fade only after stage 3
-    BCS FadeExit
+    CMP #$01            ; fade only after stage 3
+    BCC FadeExit
     
     LDA current_fade_tick
     ADC #$01
@@ -878,7 +888,7 @@ palette:
 ;    .db $22,$29,$1A,$0F,  $22,$36,$17,$0F,  $22,$30,$21,$0F,  $22,$27,$17,$0F  ;mario
 
     ;sprite palette data
-    .db $0F,$27,$21,$19,    $0F,$27,$21,$19,    $0F,$27,$21,$19,    $0F,$27,$21,$19
+    .db $0F,$27,$21,$19,    $0F,$1C,$21,$19,    $0F,$27,$21,$19,    $0F,$27,$21,$19
 ;  .db $22,$29,$1A,$0F,  $22,$36,$17,$0F,  $22,$30,$21,$0F,  $22,$27,$17,$0F   ;;background palette
 
 
