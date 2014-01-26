@@ -25,6 +25,8 @@ avatar_mode         .rs 1
 current_fade        .rs 1
 current_fade_tick   .rs 1
 
+stage1_monsterA     .rs 1
+
 current_stage       .rs 1
     ; game states
     ; 00 = title
@@ -47,6 +49,7 @@ LEFTWALL    = $20
 RIGHTWALL   = $DE
 
 STAGE1_TARGET   = $80
+STAGE2_TARGET   = $40
 
 id_avatar  = 0
 id_enemy   = 1
@@ -113,6 +116,8 @@ init:
     STA current_fade
     STA current_fade_tick    
     STA current_stage 
+
+    STA stage1_monsterA
     RTI
 
 ;;;;;;;;;;;;
@@ -464,6 +469,7 @@ Controller1_RightDone:
 
 CheckCollision:
     JSR Stage1_CheckCollision
+CheckCollisionEnd:
     RTS
 
 Stage1_CheckCollision:
@@ -474,12 +480,39 @@ Stage1_CheckCollision:
     RTS
     
 Stage1_CheckCollision_Go:
-    ; check player against block
+    ; check flag if stage1 enemy is still alive
+    LDX stage1_monsterA
+    CPX #$00
+    BEQ CheckCollisionEnd       ;; todo: possible bug?
+        
+    ; check player against block (hack: 1st pass)
+    LDA SPRITE_RAM + 3
+    CLC
+    ADC #$8        ;avatar is 16 pixels wide
+    CMP #STAGE1_TARGET
+    BCC CheckCollisionEnd
+
+    ; move monster to the left as a "new monster"
+    LDA #STAGE2_TARGET
+    STA SPRITE_RAM + 16 + 3
+    STA SPRITE_RAM + 16 + 8 + 3
+    LDA #STAGE2_TARGET
+    CLC
+    ADC #$8
+    STA SPRITE_RAM + 16 + 4 + 3
+    STA SPRITE_RAM + 16 + 8 + 4 + 3
+    
+    LDA stage1_monsterA
+    ADC #$01
+    STA stage1_monsterA
+
+    ; check player against block (hack: 1st pass)
     LDA SPRITE_RAM + 3
     CLC
     ADC #$8        ;avatar is 16 pixels wide
     CMP #STAGE1_TARGET
     BCS OnCollision
+
     RTS
     
 OnCollision:
@@ -762,11 +795,6 @@ sprites:
     .db $80, $2D, $00, $28
     .db $88, $3C, $00, $20
     .db $88, $3D, $00, $28
-
-;    .db $80, $42, $00, $20
-;    .db $80, $43, $00, $28
-;    .db $88, $52, $00, $20
-;    .db $88, $53, $00, $28
 
    ; monster1 
     .db $A0, $2C, $00, STAGE1_TARGET
