@@ -516,6 +516,16 @@ Stage1_CheckCollision_Go:
     ADC #$8
     STA SPRITE_RAM + 16 + 4 + 3
     STA SPRITE_RAM + 16 + 8 + 4 + 3
+ 
+    ; transform monster
+    LDA #$2E
+    STA SPRITE_RAM + 16 + 1
+    LDA #$3E
+    STA SPRITE_RAM + 16 + 8 + 1
+    LDA #$2F
+    STA SPRITE_RAM + 16 + 4 + 1
+    LDA #$3F
+    STA SPRITE_RAM + 16 + 8 + 4 + 1
     
     LDA stage1_monsterA
     ADC #$01
@@ -553,6 +563,16 @@ Stage2_CheckCollision_Go:
     STA SPRITE_RAM + 16 + 4 + 3
     STA SPRITE_RAM + 16 + 8 + 4 + 3
     
+    ; transform monster
+    LDA #$40
+    STA SPRITE_RAM + 16 + 1
+    LDA #$50
+    STA SPRITE_RAM + 16 + 8 + 1
+    LDA #$41
+    STA SPRITE_RAM + 16 + 4 + 1
+    LDA #$51
+    STA SPRITE_RAM + 16 + 8 + 4 + 1
+
     LDA stage2_monsterA
     ADC #$01
     STA stage2_monsterA
@@ -578,8 +598,14 @@ OnCollision:
     RTS
     
 EnemyUpdate:
+    ; only after avatar #2 is achieved will the enemy move
+    LDX avatar_mode
+    CPX #$02
+    BNE EnemyUpdate_Out
+
     JSR DoEnemyUpdate_Move
 
+EnemyUpdate_Out:
     RTS
     
 DoEnemyUpdate_Move:   
@@ -621,7 +647,7 @@ DoEnemyUpdate_MoveLeft:
     STA SPRITE_RAM + 16 + 3
     STA SPRITE_RAM + 16 + 8 + 3
     CLC
-    SBC #$4     ;monster is 16 pixels wide
+    ADC #$8     ;monster is 16 pixels wide
     STA SPRITE_RAM + 16 + 4 + 3
     STA SPRITE_RAM + 16 + 8 + 4 + 3
 
