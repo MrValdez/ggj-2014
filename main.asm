@@ -23,6 +23,7 @@ avatar_x            .rs 1
 avatar_y            .rs 1
 avatar_mode         .rs 1
 current_fade        .rs 1
+current_fade_tick   .rs 1
 
     ; game states
     ; 00 = title
@@ -111,7 +112,7 @@ init:
 
     LDA #$00
     STA current_fade
-    
+    STA current_fade_tick    
     RTI
 
 ;;;;;;;;;;;;
@@ -522,6 +523,28 @@ FadeUpdate:
     LDA #$00
     STA $2006    ; write the low byte of $3F10 address
 
+;    JMP Fade1
+    LDA current_fade
+    CMP #$F2
+    BCC Fade2
+    
+    LDA current_fade_tick
+    ADC #$01
+    STA current_fade_tick
+    
+    CMP #$FF
+    BCC FrameExit
+    
+    LDA #$00
+    STA current_fade_tick
+    LDA current_fade
+    ADC #$01
+    STA current_fade
+
+FrameExit:
+    RTS
+
+Fade1:
     LDA #$0F 
     STA $2007
     LDA #$FF 
@@ -531,7 +554,8 @@ FadeUpdate:
     LDA #$19
     STA $2007
     JMP FadeUpdateReset
-    
+
+Fade2:    
     LDA #$0F 
     STA $2007
     LDA #$27 
