@@ -50,6 +50,8 @@ ANIMATION_TICK = $03
 LEFTWALL    = $20
 RIGHTWALL   = $DE
 
+GRAVITY_FORCE   = $02
+
 STAGE1_TARGET   = $80
 STAGE2_TARGET   = $40
 STAGE3_TARGET   = $90
@@ -57,7 +59,7 @@ STAGE3_TARGET   = $90
 id_avatar  = 0
 id_enemy   = 1
 
-avatar_jump_power = $01
+avatar_jump_power = $03
 
 ;;;;
 
@@ -253,13 +255,13 @@ Gravity:
     CLC
     ; top half
     LDA SPRITE_RAM
-    ADC #$01      
+    ADC #GRAVITY_FORCE
     STA SPRITE_RAM
     STA SPRITE_RAM + 4     
 
     ; bottom half
     LDA SPRITE_RAM + 8     
-    ADC #$01       
+    ADC #GRAVITY_FORCE
     STA SPRITE_RAM + 8     
     STA SPRITE_RAM + 12    
 exitGravity:
