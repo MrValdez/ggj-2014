@@ -637,20 +637,30 @@ Stage3_CheckCollision_Go:
 ;    LDX stage3_monsterA
 ;    CPX #$00
 ;    BEQ CheckCollisionEndB       ;; todo: possible bug?
-        
+       
     ; check against the ground (is player jumping?)
     LDA SPRITE_RAM
     CLC
-    ADC #$16        ;avatar is 16 pixels wide
+    ;ADC #$16        ;avatar is 16 pixels wide
     CMP #$A0        ;A0 = ground level
     BCS CheckCollisionEndB
     
     ; check player against block (hack: 1st pass)
+Stage3_CheckRightSide:
     CLC
     LDX SPRITE_RAM + 16 + 3
-    SBC #$8        ;avatar is 16 pixels wide
+    ADC #$32        ;avatar is 16 pixels wide
+    CPX SPRITE_RAM + 4 + 3
+    BCC Stage3_CheckLeftSide
+    JMP CheckCollisionEndB
+Stage3_CheckLeftSide:
+    CLC
+    LDX SPRITE_RAM + 16 + 4 + 3
+   SBC #$32        ;avatar is 16 pixels wide
     CPX SPRITE_RAM + 3
-    BCS CheckCollisionEndB
+    BCS Stage3_HasCollision
+    JMP CheckCollisionEndB
+Stage3_HasCollision:
 
     ; move monster to the top as a "new monster"
     LDA #$60
@@ -685,12 +695,7 @@ Stage3_CheckCollision_Go:
     ADC #$01
     STA stage3_monsterA
 
-    ; check player against block (hack: 2nd pass)
-    CLC
-    LDX SPRITE_RAM + 16 + 3
-    SBC #$8        ;avatar is 16 pixels wide
-    CPX SPRITE_RAM + 3
-    BCS OnCollision
+    JMP OnCollision_link
 
     RTS
 
@@ -698,19 +703,19 @@ OnCollision_link:
     JMP OnCollision
     
 Stage4_CheckCollision_Go:
-    ; check flag if stage1 enemy is still alive
+ ;    check flag if stage1 enemy is still alive
     LDX stage4_monsterA
     CPX #$00
     BEQ CheckCollisionEndB       ;; todo: possible bug?
         
-    ; check player against block (hack: 1st pass)
+ ;    check player against block (hack: 1st pass)
     LDA SPRITE_RAM + 3
     CLC
     SBC #$8        ;avatar is 16 pixels wide
     CMP #STAGE4_TARGET
     BCS CheckCollisionEndB
 
-    ; move monster to the top as a "new monster"
+ ;    move monster to the top as a "new monster"
     LDA #STAGE4_TARGET
     STA SPRITE_RAM + 16
     STA SPRITE_RAM + 16 + 8
@@ -720,7 +725,7 @@ Stage4_CheckCollision_Go:
     STA SPRITE_RAM + 16 + 4
     STA SPRITE_RAM + 16 + 8 + 4
     
-    ; transform monster
+;     transform monster
     LDA #$40
     STA SPRITE_RAM + 16 + 1
     LDA #$50
@@ -734,7 +739,7 @@ Stage4_CheckCollision_Go:
     ADC #$01
     STA stage4_monsterA
 
-    ; check player against block (hack: 2nd pass)
+;     check player against block (hack: 2nd pass)
     LDA SPRITE_RAM + 3
     CLC
     ADC #$8        ;avatar is 16 pixels wide
@@ -905,8 +910,8 @@ FadeExit:
 MainLoop:
     JSR ReadInput
     JSR Gravity
-    JSR CheckCollision
     JSR EnemyUpdate
+    JSR CheckCollision
     JSR FadeUpdate
     RTS
     
