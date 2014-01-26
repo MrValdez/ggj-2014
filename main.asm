@@ -25,6 +25,7 @@ avatar_mode         .rs 1
 current_fade        .rs 1
 current_fade_tick   .rs 1
 
+current_stage       .rs 1
     ; game states
     ; 00 = title
     ; 01 = main menu
@@ -109,10 +110,9 @@ init:
     
     LDA #$00
     STA avatar_mode
-
-    LDA #$00
     STA current_fade
     STA current_fade_tick    
+    STA current_stage 
     RTI
 
 ;;;;;;;;;;;;
@@ -483,6 +483,10 @@ OnCollision:
     CLC
     ADC #$01
     STA avatar_mode
+
+    LDA current_stage
+    ADC #$01
+    STA current_stage
     RTS
     
 EnemyUpdate:
@@ -517,50 +521,55 @@ DoEnemyUpdate:
     RTS
 
 FadeUpdate:
+    LDA current_stage
+    CMP #$03            ; fade only after stage 3
+    BCS FadeExit
+    
+    LDA current_fade_tick
+    ADC #$01
+    STA current_fade_tick
+    CMP #$3F
+    BCS FadeExit
+
+    LDA #$00
+    STA current_fade_tick
+    LDA current_fade
+    CMP #$10
+    BEQ Fade2
+    
+    LDA current_fade
+    ADC #$01
+    STA current_fade
+    
+Fade1:
     LDA $2002    ; read PPU status to reset the high/low latch to high
     LDA #$3F
     STA $2006    ; write the high byte of $3F10 address
     LDA #$00
     STA $2006    ; write the low byte of $3F10 address
 
-;    JMP Fade1
-    LDA current_fade
-    CMP #$F2
-    BCC Fade2
-    
-    LDA current_fade_tick
-    ADC #$01
-    STA current_fade_tick
-    
-    CMP #$FF
-    BCC FrameExit
-    
-    LDA #$00
-    STA current_fade_tick
-    LDA current_fade
-    ADC #$01
-    STA current_fade
-
-FrameExit:
-    RTS
-
-Fade1:
-    LDA #$0F 
-    STA $2007
-    LDA #$FF 
-    STA $2007
-    LDA #$11
-    STA $2007
-    LDA #$19
-    STA $2007
-    JMP FadeUpdateReset
-
-Fade2:    
     LDA #$0F 
     STA $2007
     LDA #$27 
     STA $2007
     LDA #$11
+    STA $2007
+    LDA #$2A
+    STA $2007
+    JMP FadeUpdateReset
+
+Fade2:    
+    LDA $2002    ; read PPU status to reset the high/low latch to high
+    LDA #$3F
+    STA $2006    ; write the high byte of $3F10 address
+    LDA #$00
+    STA $2006    ; write the low byte of $3F10 address
+
+    LDA #$0F 
+    STA $2007
+    LDA #$27 
+    STA $2007
+    LDA #$21
     STA $2007
     LDA #$19
     STA $2007
@@ -574,6 +583,7 @@ FadeUpdateReset:
     LDA #$00        ;;tell the ppu there is no background scrolling
     STA $2005
 
+FadeExit:
     RTS
     
 MainLoop:
