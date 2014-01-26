@@ -28,6 +28,7 @@ current_fade_tick   .rs 1
 stage1_monsterA     .rs 1
 stage2_monsterA     .rs 1
 stage3_monsterA     .rs 1
+stage4_monsterA     .rs 1
 
 enemy1_dir          .rs 1
 
@@ -57,6 +58,7 @@ GRAVITY_FORCE   = $02
 STAGE1_TARGET   = $80
 STAGE2_TARGET   = $40
 STAGE3_TARGET   = $90
+STAGE4_TARGET   = $90
 
 id_avatar  = 0
 id_enemy   = 1
@@ -127,6 +129,8 @@ init:
 
     STA stage1_monsterA
     STA stage2_monsterA
+    STA stage3_monsterA
+    STA stage4_monsterA
     
     STA enemy1_dir
     RTI
@@ -480,20 +484,31 @@ Controller1_RightDone:
 
 CheckCollision:
     JSR Stage1_CheckCollision
-CheckCollisionEnd:
-    RTS
-
+    
 Stage1_CheckCollision:
-    ; only for stage 1
+    ; stage 1
     LDX avatar_mode
     CPX #$00
     BEQ Stage1_CheckCollision_Go
 
+    ; stage 2
     LDX avatar_mode
     CPX #$01
     BEQ Stage2_CheckCollision_Go
     RTS
     
+    ; stage 3
+    LDX avatar_mode
+    CPX #$02
+    BEQ Stage3_CheckCollision_Go_link
+    RTS
+
+    ; stage 4
+    LDX avatar_mode
+    CPX #$03
+    BEQ Stage4_CheckCollision_Go_link
+    RTS
+
 Stage1_CheckCollision_Go:
     ; check flag if stage1 enemy is still alive
     LDX stage1_monsterA
@@ -540,6 +555,15 @@ Stage1_CheckCollision_Go:
 
     RTS
 
+Stage3_CheckCollision_Go_link:
+    JMP Stage3_CheckCollision_Go
+    RTS
+Stage4_CheckCollision_Go_link:
+    JMP Stage4_CheckCollision_Go
+    RTS
+CheckCollisionEnd:
+    RTS
+    
 Stage2_CheckCollision_Go:
     ; check flag if stage1 enemy is still alive
     LDX stage2_monsterA
@@ -605,6 +629,113 @@ OnCollision:
     LDA current_stage
     ADC #$01
     STA current_stage
+    RTS
+
+CheckCollisionEndB:
+    RTS
+    
+Stage3_CheckCollision_Go:
+    ; check flag if stage1 enemy is still alive
+;    LDX stage3_monsterA
+;    CPX #$00
+;    BEQ CheckCollisionEndB       ;; todo: possible bug?
+        
+    ; check player against block (hack: 1st pass)
+;    CLC
+;    LDX SPRITE_RAM + 16 + 3
+;    SBC #$8        ;avatar is 16 pixels wide
+;    CPX SPRITE_RAM + 3
+;    BCS CheckCollisionEndB
+
+    ; move monster to the top as a "new monster"
+    LDA #$60
+    STA SPRITE_RAM + 16
+    STA SPRITE_RAM + 16 + 8
+    CLC
+    LDA #$60
+    ADC #$8
+    STA SPRITE_RAM + 16 + 4
+    STA SPRITE_RAM + 16 + 8 + 4
+
+    LDA #$60
+    STA SPRITE_RAM + 16 + 3
+    STA SPRITE_RAM + 16 + 4 + 3
+    CLC
+    LDA #$60
+    ADC #$8
+    STA SPRITE_RAM + 16 + 8 + 3
+    STA SPRITE_RAM + 16 + 8 + 4 + 3
+
+    ; transform monster
+    LDA #$42
+    STA SPRITE_RAM + 16 + 1
+    LDA #$43
+    STA SPRITE_RAM + 16 + 8 + 1
+    LDA #$52
+    STA SPRITE_RAM + 16 + 4 + 1
+    LDA #$53
+    STA SPRITE_RAM + 16 + 8 + 4 + 1
+
+    LDA stage3_monsterA
+    ADC #$01
+    STA stage3_monsterA
+
+    ; check player against block (hack: 2nd pass)
+    LDA SPRITE_RAM + 3
+    CLC
+    ADC #$8        ;avatar is 16 pixels wide
+    CMP #STAGE3_TARGET
+    BCS OnCollision
+
+    RTS
+
+OnCollision_link:
+    JMP OnCollision
+    
+Stage4_CheckCollision_Go:
+    ; check flag if stage1 enemy is still alive
+    LDX stage4_monsterA
+    CPX #$00
+    BEQ CheckCollisionEndB       ;; todo: possible bug?
+        
+    ; check player against block (hack: 1st pass)
+    LDA SPRITE_RAM + 3
+    CLC
+    SBC #$8        ;avatar is 16 pixels wide
+    CMP #STAGE4_TARGET
+    BCS CheckCollisionEndB
+
+    ; move monster to the top as a "new monster"
+    LDA #STAGE4_TARGET
+    STA SPRITE_RAM + 16
+    STA SPRITE_RAM + 16 + 8
+    LDA #STAGE4_TARGET
+    CLC
+    ADC #$8
+    STA SPRITE_RAM + 16 + 4
+    STA SPRITE_RAM + 16 + 8 + 4
+    
+    ; transform monster
+    LDA #$40
+    STA SPRITE_RAM + 16 + 1
+    LDA #$50
+    STA SPRITE_RAM + 16 + 8 + 1
+    LDA #$41
+    STA SPRITE_RAM + 16 + 4 + 1
+    LDA #$51
+    STA SPRITE_RAM + 16 + 8 + 4 + 1
+
+    LDA stage4_monsterA
+    ADC #$01
+    STA stage4_monsterA
+
+    ; check player against block (hack: 2nd pass)
+    LDA SPRITE_RAM + 3
+    CLC
+    ADC #$8        ;avatar is 16 pixels wide
+    CMP #STAGE3_TARGET
+    BCS OnCollision_link
+
     RTS
     
 EnemyUpdate:
