@@ -26,6 +26,8 @@ current_fade        .rs 1
 current_fade_tick   .rs 1
 
 stage1_monsterA     .rs 1
+stage2_monsterA     .rs 1
+stage3_monsterA     .rs 1
 
 current_stage       .rs 1
     ; game states
@@ -50,11 +52,12 @@ RIGHTWALL   = $DE
 
 STAGE1_TARGET   = $80
 STAGE2_TARGET   = $40
+STAGE3_TARGET   = $90
 
 id_avatar  = 0
 id_enemy   = 1
 
-avatar_jump_power = $04
+avatar_jump_power = $01
 
 ;;;;
 
@@ -104,6 +107,7 @@ clearmem:
     JSR vblankwait ; second vblank    
     JSR init
     JSR init_PPU
+    RTI
     
 init:
     LDA #$80
@@ -118,6 +122,7 @@ init:
     STA current_stage 
 
     STA stage1_monsterA
+    STA stage2_monsterA
     RTI
 
 ;;;;;;;;;;;;
@@ -477,6 +482,10 @@ Stage1_CheckCollision:
     LDX avatar_mode
     CPX #$00
     BEQ Stage1_CheckCollision_Go
+
+    LDX avatar_mode
+    CPX #$01
+    BEQ Stage2_CheckCollision_Go
     RTS
     
 Stage1_CheckCollision_Go:
@@ -506,11 +515,47 @@ Stage1_CheckCollision_Go:
     ADC #$01
     STA stage1_monsterA
 
-    ; check player against block (hack: 1st pass)
+    ; check player against block (hack: 2bd pass)
     LDA SPRITE_RAM + 3
     CLC
     ADC #$8        ;avatar is 16 pixels wide
     CMP #STAGE1_TARGET
+    BCS OnCollision
+
+    RTS
+
+Stage2_CheckCollision_Go:
+    ; check flag if stage1 enemy is still alive
+    LDX stage2_monsterA
+    CPX #$00
+    BEQ CheckCollisionEnd       ;; todo: possible bug?
+        
+    ; check player against block (hack: 1st pass)
+    LDA SPRITE_RAM + 3
+    CLC
+    SBC #$8        ;avatar is 16 pixels wide
+    CMP #STAGE2_TARGET
+    BCS CheckCollisionEnd
+
+    ; move monster to the right as a "new monster"
+    LDA #STAGE3_TARGET
+    STA SPRITE_RAM + 16 + 3
+    STA SPRITE_RAM + 16 + 8 + 3
+    LDA #STAGE3_TARGET
+    CLC
+    ADC #$8
+    STA SPRITE_RAM + 16 + 4 + 3
+    STA SPRITE_RAM + 16 + 8 + 4 + 3
+    
+    LDA stage2_monsterA
+    ADC #$01
+    STA stage2_monsterA
+
+    ; check player against block (hack: 2nd pass)
+    LDA SPRITE_RAM + 3
+    CLC
+    ADC #$8        ;avatar is 16 pixels wide
+    CMP #STAGE2_TARGET
     BCS OnCollision
 
     RTS
