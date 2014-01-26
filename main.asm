@@ -495,19 +495,17 @@ Stage1_CheckCollision:
     LDX avatar_mode
     CPX #$01
     BEQ Stage2_CheckCollision_Go
-    RTS
     
     ; stage 3
     LDX avatar_mode
     CPX #$02
     BEQ Stage3_CheckCollision_Go_link
-    RTS
 
     ; stage 4
-    LDX avatar_mode
-    CPX #$03
-    BEQ Stage4_CheckCollision_Go_link
-    RTS
+;    LDX avatar_mode
+;    CPX #$03
+;    BEQ Stage4_CheckCollision_Go_link
+;    RTS
 
 Stage1_CheckCollision_Go:
     ; check flag if stage1 enemy is still alive
@@ -641,11 +639,11 @@ Stage3_CheckCollision_Go:
 ;    BEQ CheckCollisionEndB       ;; todo: possible bug?
         
     ; check player against block (hack: 1st pass)
-;    CLC
-;    LDX SPRITE_RAM + 16 + 3
-;    SBC #$8        ;avatar is 16 pixels wide
-;    CPX SPRITE_RAM + 3
-;    BCS CheckCollisionEndB
+    CLC
+    LDX SPRITE_RAM + 16 + 3
+    SBC #$8        ;avatar is 16 pixels wide
+    CPX SPRITE_RAM + 3
+    BCS CheckCollisionEndB
 
     ; move monster to the top as a "new monster"
     LDA #$60
