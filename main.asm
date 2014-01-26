@@ -331,6 +331,10 @@ AnimatePlayer_Frame2_forme4_branch:
      
 UpdateInputs:
 Controller1_A:
+    LDX avatar_mode
+    CPX #$01
+    BCC out     ; only avatar from stage 1 and up can jump
+
     ; top half
     LDA SPRITE_RAM
     CLC
@@ -534,7 +538,7 @@ FadeUpdate:
     LDA #$00
     STA current_fade_tick
     LDA current_fade
-    CMP #$10
+    CMP #$C0
     BEQ Fade2
     
     LDA current_fade
