@@ -638,6 +638,13 @@ Stage3_CheckCollision_Go:
 ;    CPX #$00
 ;    BEQ CheckCollisionEndB       ;; todo: possible bug?
         
+    ; check against the ground (is player jumping?)
+    LDA SPRITE_RAM
+    CLC
+    ADC #$16        ;avatar is 16 pixels wide
+    CMP #$A0        ;A0 = ground level
+    BCS CheckCollisionEndB
+    
     ; check player against block (hack: 1st pass)
     CLC
     LDX SPRITE_RAM + 16 + 3
@@ -679,10 +686,10 @@ Stage3_CheckCollision_Go:
     STA stage3_monsterA
 
     ; check player against block (hack: 2nd pass)
-    LDA SPRITE_RAM + 3
     CLC
-    ADC #$8        ;avatar is 16 pixels wide
-    CMP #STAGE3_TARGET
+    LDX SPRITE_RAM + 16 + 3
+    SBC #$8        ;avatar is 16 pixels wide
+    CPX SPRITE_RAM + 3
     BCS OnCollision
 
     RTS
